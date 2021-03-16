@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from DL_1.NeuralNetwork import Network, Layer
+from NeuralNetwork import Network, Layer
 
 
 class NeuralNetworkTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class NeuralNetworkTests(unittest.TestCase):
         x = np.array([[5.0, 3.0],
                       [1.0, 4.0]])
         result = network.linear_model_forward(x)
-        self.assertEqual((4, 3), result)
+        self.assertEqual((4, 2), result.shape)
 
     def test_linear_forward(self):
         layer = Layer(None, None)
@@ -39,9 +39,9 @@ class NeuralNetworkTests(unittest.TestCase):
 
     def test_soft_max(self):
         layer = Layer(None, None)
-        z = np.array([2.0, 2.0, 2.0, 2.0])
-        result = layer.soft_max(z)
-        self.assertTrue(np.array_equal(result, np.array([0.25, 0.25, 0.25, 0.25])))
+        z = np.array([[2.0, 2.0, 2.0, 2.0]])
+        result = layer.soft_max(z.reshape(1, 4))
+        self.assertTrue(np.array_equal(result, np.array([0.25, 0.25, 0.25, 0.25]).reshape(1, 4)))
 
     def test_relu(self):
         layer = Layer(None, None)

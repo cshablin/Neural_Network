@@ -38,7 +38,14 @@ class Layer(object):
     #     sum_z_exp = np.sum(z_exp)
     #     return z_exp / sum_z_exp
 
+    # TODO: Grisha I found this and dont understand why its correct
     def soft_max(self, z: np.array):
+        """
+
+        :param z: the linear component of the activation function. it can be matrix each column represents sample
+        :return:
+        """
+        assert len(z.shape) == 2
         s = np.max(z, axis=1)
         s = s[:, np.newaxis]  # broadcasting
         e_x = np.exp(z - s)
