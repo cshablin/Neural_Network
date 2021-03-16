@@ -40,8 +40,8 @@ class NeuralNetworkTests(unittest.TestCase):
     def test_soft_max(self):
         layer = Layer(None, None)
         z = np.array([[2.0, 2.0, 2.0, 2.0]])
-        result = layer.soft_max(z.reshape(1, 4))
-        self.assertTrue(np.array_equal(result, np.array([0.25, 0.25, 0.25, 0.25]).reshape(1, 4)))
+        result = layer.soft_max(z.reshape(4, 1))
+        self.assertTrue(np.array_equal(result, np.array([0.25, 0.25, 0.25, 0.25]).reshape(4, 1)))
 
     def test_relu(self):
         layer = Layer(None, None)
