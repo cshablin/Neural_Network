@@ -26,6 +26,7 @@ class Layer(object):
         activation_extended = np.insert(activation, len(activation), 1.0, axis=0)
         return matrix.dot(activation_extended)
 
+
     # def soft_max(self, z: np.array):
     #     '''
     #
