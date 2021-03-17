@@ -42,16 +42,10 @@ class Layer(object):
         """
 
         :param z: the linear component of the activation function. it can be matrix each column represents sample
-        :return:
+        :return: activations of the layer
         """
-        return np.exp(z) / np.sum(np.exp(z), axis=0)
-        # assert len(z.shape) == 2
-        # s = np.max(z, axis=1)
-        # s = s[:, np.newaxis]  # broadcasting
-        # e_x = np.exp(z - s)
-        # div = np.sum(e_x, axis=1)
-        # div = div[:, np.newaxis]
-        # return e_x / div
+        z_exp = np.exp(z)
+        return z_exp / np.sum(z_exp, axis=0)
 
     def relu(self, z: np.array) -> np.array:
         '''
@@ -79,6 +73,15 @@ class Layer(object):
             return self.relu(z)
         if activation == "softmax":
             return self.soft_max(z)
+
+    def compute_cost(self, label_activations, y):
+        '''
+
+        :param label_activations: probability vector corresponding label predictions, shape (num_of_classes, number of examples)
+        :param y: the labels vector
+        :return: the cross-entropy cost
+        '''
+        pass
 
 
 class Network(object):
