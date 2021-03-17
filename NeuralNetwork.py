@@ -74,14 +74,17 @@ class Layer(object):
         if activation == "softmax":
             return self.soft_max(z)
 
-    def compute_cost(self, label_activations, y):
+    def compute_cost(self, label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) -> np.ndarray:
         '''
 
-        :param label_activations: probability vector corresponding label predictions, shape (num_of_classes, number of examples)
-        :param y: the labels vector
-        :return: the cross-entropy cost
+        :param epsilon: to avoid log(0)
+        :param label_predictions: probability vector corresponding label predictions, shape (num_of_classes, number of examples)
+        :param y: the labels vector, shape (num_of_classes, number of examples)
+        :return: the cross-entropy cost for all inputs
         '''
-        pass
+        label_predictions = np.clip(label_predictions, epsilon, 1)
+        n_samples = label_predictions.shape[1]
+        return -np.sum(y * np.log(label_predictions)) / n_samples
 
 
 class Network(object):
