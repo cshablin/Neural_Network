@@ -12,7 +12,7 @@ class Layer(object):
 
     def linear_forward(self, activation: np.array, weights: np.array, bias: np.array) -> np.array:
         '''
-
+        Calculates the linear part of forward propagation
         :param activation: the activations of the previous layer
         :param weights: the weight matrix of the current layer (shape [size of current layer, size of previous layer])
         :param bias: bias vector of the current layer (shape [size of current layer, 1])
@@ -22,9 +22,9 @@ class Layer(object):
         self.weights = weights
         self.bias = bias
 
-        matrix = np.concatenate((weights, bias), axis=1)
-        activation_extended = np.insert(activation, len(activation), 1.0, axis=0)
-        return matrix.dot(activation_extended)
+        matrix = np.concatenate((weights, bias), axis=1) # [W|b]
+        activation_extended = np.insert(activation, len(activation), 1.0, axis=0) # [A|1]
+        return matrix.dot(activation_extended) # [W|b]*[A|1]
 
 
     # def soft_max(self, z: np.array):
@@ -40,10 +40,11 @@ class Layer(object):
 
     def soft_max(self, z: np.array):
         """
-
+        Softmax activation function
         :param z: the linear component of the activation function. it can be matrix each column represents sample
         :return:
         """
+        self.activation_cache = z
         return np.exp(z) / np.sum(np.exp(z), axis=0)
         # assert len(z.shape) == 2
         # s = np.max(z, axis=1)
@@ -55,12 +56,11 @@ class Layer(object):
 
     def relu(self, z: np.array) -> np.array:
         '''
-
+        ReLU activation function
         :param z: the linear component of the activation function
         :return: activations of the layer
         '''
         self.activation_cache = z
-        # result = np.maximum(np.zeros(len(z)), z)
         result = np.maximum(np.zeros(z.shape), z)
         return result
 
@@ -93,13 +93,13 @@ class Network(object):
         :param layer_dims: an array of the dimensions of each layer in the network
         :return: a dictionary containing the initialized W and b parameters of each layer (W1…WL, b1…bL).
         '''
-
         index_2_layer = {}
+
         for layer in range(1, len(layer_dims), 1):
             weight_layer_shape = (layer_dims[layer], layer_dims[layer - 1])
-            weight_matrix = np.zeros(weight_layer_shape) + np.random.uniform(-1.0, 1.0, weight_layer_shape)
+            weight_matrix = np.random.uniform(-1.0, 1.0, weight_layer_shape) # this should be randoms only, for some reason he advices to use randn for nornal distribution
             bias_shape = (layer_dims[layer], 1)
-            bias_vector = np.zeros(bias_shape) + np.random.uniform(-1.0, 1.0, bias_shape)
+            bias_vector = np.zeros(bias_shape) # this should be zeros only
             index_2_layer[layer] = Layer(weight_matrix, bias_vector)
 
         self.index_2_layer = dict(index_2_layer)
@@ -114,6 +114,8 @@ class Network(object):
         :param use_batchnorm: boolean flag used to determine whether to apply batchnorm after the activation
         :return: last post-activation value
         """
+        # TODO: add "parameters" arg
+
         prev_activations = x
         for index, layer in self.index_2_layer.items():
             prev_activations = layer.linear_activation_forward(prev_activations, layer.weights, layer.bias, "relu")

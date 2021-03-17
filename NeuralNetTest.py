@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-
 from NeuralNetwork import Network, Layer
 
+np.random.seed(101)
 
 class NeuralNetworkTests(unittest.TestCase):
 
@@ -13,6 +13,8 @@ class NeuralNetworkTests(unittest.TestCase):
         layers_params = network.initialize_parameters(layers_dims)
         last_layer = layers_params[2]
         self.assertEqual((4, 3), last_layer.weights.shape)
+        # TODO: weight values are between -1 and 1
+        # TODO: bias values are 0
 
     def test_net_forward_pass(self):
 
