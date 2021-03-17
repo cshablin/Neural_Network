@@ -50,3 +50,13 @@ class NeuralNetworkTests(unittest.TestCase):
         z = np.array([-2.0, 2.0, -2.0, 2.0])
         result = layer.relu(z)
         self.assertTrue(np.array_equal(result, np.array([0, 2.0, 0, 2.0])))
+
+    def test_compute_cost(self):
+        predictions = np.array([[0.25,0.25,0.25,0.25],
+                                [0.01,0.01,0.01,0.96]])
+        targets = np.array([[0,0,0,1],
+                            [0,0,0,1]])
+
+        layer = Layer(None, None)
+        res = layer.compute_cost(predictions.T, targets.T)
+        self.assertTrue(np.isclose(0.713558177, res))
