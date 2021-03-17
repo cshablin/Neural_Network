@@ -60,3 +60,9 @@ class NeuralNetworkTests(unittest.TestCase):
         layer = Layer(None, None)
         res = layer.compute_cost(predictions.T, targets.T)
         self.assertTrue(np.isclose(0.713558177, res))
+
+    def test_batch_norm(self):
+        a = np.array([2,4,6,3,1,5]).reshape((2,3))
+        layer = Layer(None, None)
+        na = layer.apply_batchnorm(a)
+        self.assertAlmostEqual(na[0][0],-0.866, delta=1e-4) # -0.866 = (2-4)/sqrt((4+4+8)/3)

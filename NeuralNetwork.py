@@ -26,18 +26,6 @@ class Layer(object):
         activation_extended = np.insert(activation, len(activation), 1.0, axis=0) # [A|1]
         return matrix.dot(activation_extended) # [W|b]*[A|1]
 
-
-    # def soft_max(self, z: np.array):
-    #     '''
-    #
-    #     :param z: the linear component of the activation function
-    #     :return: activations of the layer
-    #     '''
-    #     self.activation_cache = z
-    #     z_exp = np.exp(z)
-    #     sum_z_exp = np.sum(z_exp)
-    #     return z_exp / sum_z_exp
-
     def soft_max(self, z: np.array):
         """
         Softmax activation function
@@ -60,13 +48,14 @@ class Layer(object):
     def linear_activation_forward(self, activations_prev: np.array, weights: np.array, bias: np.array,
                                   activation: str) -> np.array:
         '''
-
+        Forward propagation for the LINEAR->ACTIVATION layer
         :param activations_prev: activations of the previous layer
         :param weights: the weight matrix of the current layer
         :param bias: bias vector of the current layer
         :param activation: activation function to be used (“softmax” or “relu”)
         :return: activations of the current layer
         '''
+        # TODO: return joined cache
         z = self.linear_forward(activations_prev, weights, bias)
         if activation == "relu":
             return self.relu(z)
@@ -75,7 +64,7 @@ class Layer(object):
 
     def compute_cost(self, label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) -> np.ndarray:
         '''
-
+        Calculate cost function - categorical cross-entropy loss
         :param epsilon: to avoid log(0)
         :param label_predictions: probability vector corresponding label predictions, shape (num_of_classes, number of examples)
         :param y: the labels vector, shape (num_of_classes, number of examples)
@@ -84,6 +73,18 @@ class Layer(object):
         label_predictions = np.clip(label_predictions, epsilon, 1)
         n_samples = label_predictions.shape[1]
         return -np.sum(y * np.log(label_predictions)) / n_samples
+
+    def apply_batchnorm(self, activations: np.array, epsilon=1e-12) -> np.array:
+        '''
+        Prior activation batch normalization
+        :param activations: the activation values of the layer
+        :return: normalized activation values
+        '''
+        m = activations.shape[1]
+        mu = np.sum(activations, axis=1)/m
+        var = np.sum((activations - np.vstack(mu))**2)/m
+        normalized_activations = (activations - np.vstack(mu))/np.sqrt(var + epsilon)
+        return normalized_activations
 
 
 class Network(object):
