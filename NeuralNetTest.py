@@ -4,6 +4,7 @@ from NeuralNetwork import Network, Layer
 
 np.random.seed(101)
 
+
 class NeuralNetworkTests(unittest.TestCase):
 
     def test_init_layers(self):
@@ -81,3 +82,14 @@ class NeuralNetworkTests(unittest.TestCase):
         self.assertEqual(activations.shape, dA_prev.shape)
         self.assertEqual(db.shape, bias.shape)
         self.assertEqual(dW.shape, w.shape)
+
+    def test_linear_activation_backward(self):
+        network = Network()
+        layers_dims = [2, 3, 4]
+        network.initialize_parameters(layers_dims)
+        x = np.array([[5.0, 3.0],
+                      [1.0, 4.0]])
+        result = network.linear_model_forward(x)
+        layer_1 = network.index_2_layer[1]
+        da = np.array([[2.0, 0.5], [1.0, 1.5], [1.0, 2.5]])
+        res = layer_1.linear_activation_backward(da)

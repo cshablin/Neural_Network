@@ -4,11 +4,12 @@ import numpy as np
 
 class Layer(object):
 
-    def __init__(self, weights: np.array, bias: np.array):
+    def __init__(self, weights: np.array, bias: np.array, activation="relu"):
         self.weights = weights
         self.bias = bias
         self.activation_cache = None
         self.previous_linear_activation_cache = None
+        self.activation_func = activation
 
     def linear_forward(self, activation: np.array, weights: np.array, bias: np.array) -> np.array:
         '''
@@ -57,9 +58,9 @@ class Layer(object):
         '''
         # TODO: return joined cache
         z = self.linear_forward(activations_prev, weights, bias)
-        if activation == "relu":
+        if self.activation_func == "relu":
             return self.relu(z)
-        if activation == "softmax":
+        if self.activation_func == "softmax":
             return self.soft_max(z)
 
     def compute_cost(self, label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) -> np.ndarray:
@@ -108,6 +109,46 @@ class Layer(object):
         dA_prev = np.dot(self.weights.T, dz)
         return dA_prev, dW, db
 
+    def linear_activation_backward(self, da: np.ndarray):
+        """
+
+        :param da: post activation gradient of the current layer
+        :return:
+                dA_prev -- Gradient of the cost with respect to the activation (of the previous layer l-1), same shape as A_prev
+                dW -- Gradient of the cost with respect to W (current layer l), same shape as W
+                db -- Gradient of the cost with respect to b (current layer l), same shape as b
+        """
+
+        # cache is stored in Layer's fields see CTOR
+        da_prev, dw, db = None, None, None
+        if self.activation_func == "relu":
+            dz = self.__relu_backward(da)
+            da_prev, dw, db = self.linear_backward(dz)
+        # elif self.activation_func == "softmax":
+        #     dz = self.__softmax_backward(da)
+        #     da_prev, dw, db = self.linear_backward(dz)
+
+        return da_prev, dw, db
+
+    def __softmax_backward(self, da: np.ndarray) -> np.ndarray:
+        pass
+
+    def __relu_backward(self, da: np.ndarray) -> np.ndarray:
+        """
+
+        :param da: the post-activation gradient
+        :return dz: Gradient of the cost with respect to Z
+        """
+
+        # relu(z)=a
+        # dL/dz = dL/da * da/dz = da * relu'(z)
+
+        z = self.activation_cache
+        dz = np.array(da, copy=True)
+        dz[z <= 0] = 0
+        assert (dz.shape == z.shape)
+        return dz
+
 
 class Network(object):
 
@@ -132,6 +173,7 @@ class Network(object):
 
         self.index_2_layer = dict(index_2_layer)
         self.last_layer = self.index_2_layer.popitem()[1]
+        self.last_layer.activation_func = "softmax"
         return index_2_layer
 
     def linear_model_forward(self, x: np.array, use_batchnorm: bool = False) -> np.array:
