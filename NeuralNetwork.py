@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import numpy as np
 
 
@@ -85,6 +85,28 @@ class Layer(object):
         var = np.sum((activations - np.vstack(mu))**2)/m
         normalized_activations = (activations - np.vstack(mu))/np.sqrt(var + epsilon)
         return normalized_activations
+
+    def linear_backward(self, dz: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+
+        :param dz: the gradient of the cost with respect to the linear output of the current layer dz:=[dL/dz]
+        :param cache: tuple of values (A_prev, W, b) coming from the forward propagation in the current layer
+        :return:
+                dA_prev -- Gradient of the cost with respect to the activation (of the previous layer l-1), same shape as A_prev
+                dW -- Gradient of the cost with respect to W (current layer l), same shape as W
+                db -- Gradient of the cost with respect to b (current layer l), same shape as b
+
+        """
+        n_samples = self.previous_linear_activation_cache.shape[1]
+
+        # Z=W*A + b
+        # dW:=dL/dW = 1/n_samples * (dz*A)
+        # db:=dL/db = 1/n_samples * sum(dz[i])
+        # dA_prev:=dL/dA_prev = W*dz
+        dW = 1.0 / n_samples * np.dot(dz, self.previous_linear_activation_cache.T)
+        db = 1.0 / n_samples * np.sum(dz, axis=1, keepdims=True)
+        dA_prev = np.dot(self.weights.T, dz)
+        return dA_prev, dW, db
 
 
 class Network(object):

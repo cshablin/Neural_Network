@@ -66,3 +66,18 @@ class NeuralNetworkTests(unittest.TestCase):
         layer = Layer(None, None)
         na = layer.apply_batchnorm(a)
         self.assertAlmostEqual(na[0][0],-0.866, delta=1e-4) # -0.866 = (2-4)/sqrt((4+4+8)/3)
+
+    def test_linear_backward(self):
+        layer = Layer(None, None)
+        w = np.array([[5.0, 1.0, 3.0],
+                      [1.0, 2.0, 1.0]])
+        bias = np.array([[7.0],
+                         [1.0]])
+        activations = np.array([[ 0.30532145,  0.66373246], [-5.37221442, -5.45698139], [ 2.52056354,  3.78283679]])
+
+        layer.linear_forward(activations, w, bias)
+        dz = np.array([[2.0, 0.5], [1.0, 1.5]])
+        dA_prev, dW, db = layer.linear_backward(dz)
+        self.assertEqual(activations.shape, dA_prev.shape)
+        self.assertEqual(db.shape, bias.shape)
+        self.assertEqual(dW.shape, w.shape)
