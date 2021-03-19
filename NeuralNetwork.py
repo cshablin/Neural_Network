@@ -125,6 +125,8 @@ class Network(object):
         prev_activations = x
         for index, layer in self.index_2_layer.items():
             prev_activations = layer.linear_activation_forward(prev_activations, layer.weights, layer.bias, "relu")
+            if use_batchnorm:
+                prev_activations = layer.apply_batchnorm(prev_activations)
 
         result = self.last_layer.linear_activation_forward(prev_activations, self.last_layer.weights, self.last_layer.bias, "softmax")
         return result

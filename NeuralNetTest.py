@@ -23,7 +23,7 @@ class NeuralNetworkTests(unittest.TestCase):
         network.initialize_parameters(layers_dims)
         x = np.array([[5.0, 3.0],
                       [1.0, 4.0]])
-        result = network.linear_model_forward(x)
+        result = network.linear_model_forward(x, use_batchnorm=True)
         self.assertEqual((4, 2), result.shape)
 
     def test_linear_forward(self):
