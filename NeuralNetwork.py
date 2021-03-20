@@ -33,6 +33,7 @@ class Layer(object):
         :param z: the linear component of the activation function. it can be matrix each column represents sample
         :return: activations of the layer
         """
+        self.activation_cache = z
         z_exp = np.exp(z)
         return z_exp / np.sum(z_exp, axis=0)
 
@@ -160,7 +161,7 @@ class Layer(object):
         assert (dz.shape == z.shape)
         return dz
 
-    def update_parameters(self, d_weights: np.ndarray, d_bias: np.ndarray, learning_rate=0.001):
+    def update_parameters(self, d_weights: np.ndarray, d_bias: np.ndarray, learning_rate=0.001) -> None:
         """
 
         :param d_weights:
@@ -168,6 +169,8 @@ class Layer(object):
         :param learning_rate:
         :return:
         """
+        self.weights = self.weights - learning_rate * d_weights
+        self.bias = self.bias - learning_rate * d_bias
 
 
 class Network(object):
@@ -192,7 +195,7 @@ class Network(object):
             index_2_layer[layer] = Layer(weight_matrix, bias_vector)
 
         self.index_2_layer = dict(index_2_layer)
-        self.last_layer = self.index_2_layer.popitem()[1]
+        self.last_layer = self.index_2_layer.get(len(self.index_2_layer))
         self.last_layer.activation_func = "softmax"
         return index_2_layer
 
@@ -210,10 +213,9 @@ class Network(object):
         for index, layer in self.index_2_layer.items():
             prev_activations = layer.linear_activation_forward(prev_activations, layer.weights, layer.bias, "relu")
 
-        result = self.last_layer.linear_activation_forward(prev_activations, self.last_layer.weights, self.last_layer.bias, "softmax")
-        return result
+        return prev_activations
 
-    def linear_model_backward(self, al, y) -> None:
+    def linear_model_backward(self, al: np.array, y: np.array) -> None:
         """
 
         :param al: the probabilities vectors, the output of the forward propagation
@@ -222,8 +224,8 @@ class Network(object):
         """
         # Initializing the backpropagation for softmax output layer!!!
         da = al - y
-
-        for layer in reversed(range(len(self.index_2_layer))):
+        for index in range(len(self.index_2_layer), 0, -1):
+            layer = self.index_2_layer[index]
             da, dw, db = layer.linear_activation_backward(da)
             layer.update_parameters(dw, db)
 
