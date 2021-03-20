@@ -81,9 +81,9 @@ class Layer(object):
         :param activations: the activation values of the layer
         :return: normalized activation values
         '''
-        m = activations.shape[1]
-        mu = np.sum(activations, axis=1)/m
-        var = np.sum((activations - np.vstack(mu))**2)/m
+        batch_size = activations.shape[1]
+        mu = np.sum(activations, axis=1)/batch_size
+        var = np.sum((activations - np.vstack(mu))**2)/batch_size
         normalized_activations = (activations - np.vstack(mu))/np.sqrt(var + epsilon)
         return normalized_activations
 
@@ -124,14 +124,25 @@ class Layer(object):
         if self.activation_func == "relu":
             dz = self.__relu_backward(da)
             da_prev, dw, db = self.linear_backward(dz)
-        # elif self.activation_func == "softmax":
-        #     dz = self.__softmax_backward(da)
-        #     da_prev, dw, db = self.linear_backward(dz)
+        elif self.activation_func == "softmax":
+            dz = self.__softmax_backward(da)
+            da_prev, dw, db = self.linear_backward(dz)
 
         return da_prev, dw, db
 
     def __softmax_backward(self, da: np.ndarray) -> np.ndarray:
-        pass
+        """
+
+        :param da: delta between prediction and actual value i.e. (predicted - true_value)
+        :return dz: Gradient of the cost with respect to Z
+        """
+
+        # softmax(z)=a
+        # dL/dz[i] = dL/da * da/dz = da * softmax'(z) = da * (da[i] / dz[j]) = da * -(a[i]a[j]) =...= a[i] - y[i]
+        dz = da  # shortcut saves time
+        z = self.activation_cache
+        assert (dz.shape == z.shape)
+        return dz
 
     def __relu_backward(self, da: np.ndarray) -> np.ndarray:
         """
@@ -148,6 +159,15 @@ class Layer(object):
         dz[z <= 0] = 0
         assert (dz.shape == z.shape)
         return dz
+
+    def update_parameters(self, d_weights: np.ndarray, d_bias: np.ndarray, learning_rate=0.001):
+        """
+
+        :param d_weights:
+        :param d_bias:
+        :param learning_rate:
+        :return:
+        """
 
 
 class Network(object):
@@ -193,4 +213,17 @@ class Network(object):
         result = self.last_layer.linear_activation_forward(prev_activations, self.last_layer.weights, self.last_layer.bias, "softmax")
         return result
 
+    def linear_model_backward(self, al, y) -> None:
+        """
+
+        :param al: the probabilities vectors, the output of the forward propagation
+        :param y: the true labels vector (the "ground truth" - true classifications)
+        :return: each layer caches and updates its parameters on the fly
+        """
+        # Initializing the backpropagation for softmax output layer!!!
+        da = al - y
+
+        for layer in reversed(range(len(self.index_2_layer))):
+            da, dw, db = layer.linear_activation_backward(da)
+            layer.update_parameters(dw, db)
 

@@ -87,9 +87,10 @@ class NeuralNetworkTests(unittest.TestCase):
         network = Network()
         layers_dims = [2, 3, 4]
         network.initialize_parameters(layers_dims)
-        x = np.array([[5.0, 3.0],
-                      [1.0, 4.0]])
+        # 4 sample batch !!!
+        x = np.array([[5.0, 3.0, 2, 2],
+                      [1.0, 4.0, 1, 3]])
         result = network.linear_model_forward(x)
         layer_1 = network.index_2_layer[1]
-        da = np.array([[2.0, 0.5], [1.0, 1.5], [1.0, 2.5]])
+        da = np.array([[2.0, 0.5, 2, 2], [1.0, 1.5, 2, 2], [1.0, 2.5, 2, 2]])
         res = layer_1.linear_activation_backward(da)
