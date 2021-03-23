@@ -33,7 +33,7 @@ def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
                                           weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
         bias_shape = (layer_dims[layer], 1)
         bias_vector = np.zeros(bias_shape)  # this should be zeros only
-        activation_function = SOFTMAX if layer == len(layer_dims) else RELU
+        activation_function = SOFTMAX if layer == len(layer_dims) - 1 else RELU
         index_2_layer[layer] = Layer(weight_matrix, bias_vector, activation_function)
 
     return index_2_layer
@@ -242,7 +242,7 @@ def linear_model_backward(al: np.ndarray, y: np.ndarray, caches: Dict[int, Dict[
     # Initializing the backpropagation for softmax output layer!!!
     da = al - y
     for index in range(len(caches), 0, -1):
-        activation_function = SOFTMAX if index == len(caches) else RELU # ugly, if network parameters are not passed to the function, otherwise layer.activation_function could be used
+        activation_function = SOFTMAX if index == len(caches) - 1 else RELU # ugly, if network parameters are not passed to the function, otherwise layer.activation_function could be used
         da, dw, db = linear_activation_backward(da, caches[index], activation_function)
         result[f'dA{index}'] = da
         result[f'dW{index}'] = dw
