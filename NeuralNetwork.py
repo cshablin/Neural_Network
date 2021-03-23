@@ -6,14 +6,14 @@ RELU = "relu"
 
 
 class Layer(object):
-    def __init__(self, weights: np.array, bias: np.array, activation):
+    def __init__(self, weights: np.ndarray, bias: np.ndarray, activation):
         self.weights = weights
         self.bias = bias
         self.activation_func = activation
 
 
 class LinearCache(object):
-    def __init__(self, weights: np.array, bias: np.array, activation: np.array):
+    def __init__(self, weights: np.ndarray, bias: np.ndarray, activation: np.ndarray):
         self.weights = weights
         self.bias = bias
         self.activation = activation
@@ -39,7 +39,7 @@ def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
     return index_2_layer
 
 
-def linear_forward(activation: np.array, weights: np.array, bias: np.array) -> Tuple[np.array, LinearCache]:
+def linear_forward(activation: np.ndarray, weights: np.ndarray, bias: np.ndarray) -> Tuple[np.ndarray, LinearCache]:
     """
     Calculates the linear part of forward propagation
     :param activation: the activations of the previous layer
@@ -54,7 +54,7 @@ def linear_forward(activation: np.array, weights: np.array, bias: np.array) -> T
     return matrix.dot(activation_extended), LinearCache(weights, bias, activation)  # z = [W|b]*[A|1], LinearCache
 
 
-def soft_max(z: np.array) -> Tuple[np.array, np.array]:
+def soft_max(z: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Softmax activation function
     :param z: the linear component of the activation function. it can be matrix each column represents sample
@@ -65,7 +65,7 @@ def soft_max(z: np.array) -> Tuple[np.array, np.array]:
     return z_exp / np.sum(z_exp, axis=0), z
 
 
-def relu(z: np.array) -> Tuple[np.array, np.array]:
+def relu(z: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     ReLU activation function
     :param z: the linear component of the activation function
@@ -76,8 +76,8 @@ def relu(z: np.array) -> Tuple[np.array, np.array]:
     return a, z
 
 
-def linear_activation_forward(activations_prev: np.array, weights: np.array, bias: np.array,
-                              activation: str) -> Tuple[np.array, Dict[str, Tuple[LinearCache, np.array]]]:
+def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray, bias: np.ndarray,
+                              activation: str) -> Tuple[np.ndarray, Dict[str, Tuple[LinearCache, np.ndarray]]]:
     """
     Forward propagation for the LINEAR->ACTIVATION layer
     :param activations_prev: activations of the previous layer
@@ -97,8 +97,8 @@ def linear_activation_forward(activations_prev: np.array, weights: np.array, bia
     return a, cache
 
 
-def linear_model_forward(x: np.array, parameters: Dict[int, Layer], use_batchnorm: bool = False) -> Tuple[
-    np.array, Dict]:
+def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchnorm: bool = False) -> Tuple[
+    np.ndarray, Dict]:
     """
     Forward propagation for all of the network's layers and applying batchnorm if needed
     :param x: the data, numpy array of shape (input size, number of examples)
@@ -112,7 +112,7 @@ def linear_model_forward(x: np.array, parameters: Dict[int, Layer], use_batchnor
     for index, layer in parameters.items():
         (a, cache) = linear_activation_forward(a, layer.weights, layer.bias,
                                                layer.activation_func)
-        if use_batchnorm:  # aply batchnorm after activation
+        if use_batchnorm:  # apply batchnorm after activation
             a = apply_batchnorm(a)
         caches[index] = cache
 
@@ -132,7 +132,7 @@ def compute_cost(label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) ->
     return -np.sum(y * np.log(label_predictions)) / n_samples
 
 
-def apply_batchnorm(activations: np.array, epsilon=1e-12) -> np.array:
+def apply_batchnorm(activations: np.ndarray, epsilon=1e-12) -> np.ndarray:
     """
     Prior activation batch normalization
     :param epsilon: to avoid division by 0
@@ -169,7 +169,7 @@ def linear_backward(dz: np.ndarray, cache: LinearCache) -> Tuple[np.ndarray, np.
     return dA_prev, dW, db
 
 
-def linear_activation_backward(da: np.ndarray, cache: Dict[str, np.array], activation: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def linear_activation_backward(da: np.ndarray, cache: Dict[str, np.ndarray], activation: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculates the backward propagation for the LINEAR->ACTIVATION layer
     :param activation: string for "relu" or "softmax" activations
@@ -194,7 +194,7 @@ def linear_activation_backward(da: np.ndarray, cache: Dict[str, np.array], activ
     return da_prev, dw, db
 
 
-def __relu_backward(da: np.ndarray, activation_cache: np.array) -> np.ndarray:
+def __relu_backward(da: np.ndarray, activation_cache: np.ndarray) -> np.ndarray:
     """
     Backward propagation for a ReLU unit
     :param da: the post-activation gradient
@@ -212,7 +212,7 @@ def __relu_backward(da: np.ndarray, activation_cache: np.array) -> np.ndarray:
     return dz
 
 
-def __softmax_backward(da: np.ndarray, activation_cache: np.array) -> np.ndarray:
+def __softmax_backward(da: np.ndarray, activation_cache: np.ndarray) -> np.ndarray:
     """
     Backward propagation for a softmax unit
     :param da: delta between prediction and actual value i.e. (predicted - true_value)
@@ -228,8 +228,8 @@ def __softmax_backward(da: np.ndarray, activation_cache: np.array) -> np.ndarray
     return dz
 
 
-def linear_model_backward(al: np.array, y: np.array, caches: Dict[int, Dict[str, np.array]]) -> Dict[
-    str, np.array]:
+def linear_model_backward(al: np.ndarray, y: np.ndarray, caches: Dict[int, Dict[str, np.ndarray]]) -> Dict[
+    str, np.ndarray]:
     """
     Implementation of the backward propagation process for the entire network
     :param caches: for each layer holds activation_cache and linear_cache
@@ -250,7 +250,7 @@ def linear_model_backward(al: np.array, y: np.array, caches: Dict[int, Dict[str,
     return result
 
 
-def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.array], learning_rate=0.001) -> Dict[
+def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.ndarray], learning_rate=0.001) -> Dict[
     int, Layer]:
     """
     Updates parameters using gradient descent
@@ -267,8 +267,8 @@ def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.array], 
     return result
 
 
-def L_layer_model(X, Y, layers_dims, learning_rate=0.01, num_iterations=10, batch_size=100) -> Tuple[
-    np.array]:
+def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=100) -> Tuple[
+    np.ndarray, List]:
     """
     Implementation of a L-layer neural network
     :param X: the input data, a numpy array of shape (height*width , number_of_examples)
@@ -301,3 +301,23 @@ def L_layer_model(X, Y, layers_dims, learning_rate=0.01, num_iterations=10, batc
             grads = linear_model_backward(y_pred, y_sub, caches)
             params = update_parameters(params, grads, learning_rate)
     return params, costs
+
+def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> np.ndarray:
+    """
+    Calculates the accuracy of the trained neural network on the data
+    :param X: the input data, a numpy array of shape (height*width , number_of_examples)
+    :param Y: the “real” labels of the data, a vector of shape (num_of_classes, number of examples)
+    :param parameters: the parameters learnt by the system during the training (the same parameters that were updated in the update_parameters function)
+    :return: the accuracy measure of the neural net on the provided data
+    """
+    positives = 0
+    y_pred, caches = linear_model_forward(X, parameters)
+    y_pred = soft_max(y_pred)[0]
+    n_samples = y_pred.shape[1]
+    for index in range(n_samples):
+        y_index = np.where(Y[:, index] == 1)[0][0]
+        y_p_index = np.where(y_pred[:, index] == y_pred[:, index].max())[0][0]
+        if y_index == y_p_index:
+            positives += 1
+
+    return positives/n_samples

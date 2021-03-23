@@ -111,3 +111,24 @@ class NeuralNetworkTests(unittest.TestCase):
         params, costs = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.001)
         self.assertEqual(len(costs), 9)
 
+    def test_predict(self):
+        layers_dims = [4, 2, 3, 4]
+        X = np.array(([[5, 1, 2, 1],
+                       [3, 1, 3, 5],
+                       [2, 5, 3, 3],
+                       [2, 3, 5, 1],
+                       [1, 2, 2, 5],
+                       [5, 1, 1, 1]])).T  # reason for transpose: each sample must be a column
+        Y = np.array([[1, 0, 0, 0, 0, 1],
+                      [0, 0, 1, 0, 0, 0],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 1, 0, 0, 1, 0]])
+        params, costs = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.001)
+        X_test = np.array([[5, 2, 1, 1]]).T
+        Y_test = np.array([[1, 0, 0, 0]]).T
+        accuracy = predict(X, Y, params)
+        self.assertGreater(accuracy, 0.3)
+        accuracy = predict(X_test, Y_test, params)
+        self.assertGreater(accuracy, 0.3)
+
+
