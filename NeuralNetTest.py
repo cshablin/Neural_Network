@@ -97,7 +97,7 @@ class NeuralNetworkTests(unittest.TestCase):
         res['dW2'].shape = (4,3)
 
     def test_layer_model(self):
-        layers_dims = [4, 2, 3, 4]
+        layers_dims = [4, 3, 3, 4]
         X = np.array(([[5, 1, 2, 1],
                        [3, 1, 3, 5],
                        [2, 5, 3, 3],

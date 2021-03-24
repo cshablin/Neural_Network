@@ -6,7 +6,7 @@ RELU = "relu"
 
 
 class Layer(object):
-    def __init__(self, weights: np.ndarray, bias: np.ndarray, activation):
+    def __init__(self, weights: np.ndarray, bias: np.ndarray, activation: str):
         self.weights = weights
         self.bias = bias
         self.activation_func = activation
@@ -242,7 +242,7 @@ def linear_model_backward(al: np.ndarray, y: np.ndarray, caches: Dict[int, Dict[
     # Initializing the backpropagation for softmax output layer!!!
     da = al - y
     for index in range(len(caches), 0, -1):
-        activation_function = SOFTMAX if index == len(caches) - 1 else RELU # ugly, if network parameters are not passed to the function, otherwise layer.activation_function could be used
+        activation_function = SOFTMAX if index == len(caches) else RELU # ugly, if network parameters are not passed to the function, otherwise layer.activation_function could be used
         da, dw, db = linear_activation_backward(da, caches[index], activation_function)
         result[f'dA{index}'] = da
         result[f'dW{index}'] = dw
@@ -267,8 +267,7 @@ def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.ndarray]
     return result
 
 
-def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=100) -> Tuple[
-    np.ndarray, List]:
+def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=100) -> Tuple[Dict[int, Layer], List]:
     """
     Implementation of a L-layer neural network
     :param X: the input data, a numpy array of shape (height*width , number_of_examples)
