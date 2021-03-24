@@ -109,7 +109,8 @@ class NeuralNetworkTests(unittest.TestCase):
                       [0, 0, 0, 1, 0, 0],
                       [0, 1, 0, 0, 1, 0]])
         params, costs = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.001)
-        self.assertEqual(len(costs), 9)
+        self.assertLess(costs[len(costs) - 1], 0.02)
+        # self.assertEqual(len(costs), 9)
 
     def test_predict(self):
         layers_dims = [4, 2, 3, 4]

@@ -77,7 +77,7 @@ def relu(z: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray, bias: np.ndarray,
-                              activation: str) -> Tuple[np.ndarray, Dict[str, Tuple[LinearCache, np.ndarray]]]:
+                              activation: str,  test_mode: bool) -> Tuple[np.ndarray, Dict[str, Tuple[LinearCache, np.ndarray]]]:
     """
     Forward propagation for the LINEAR->ACTIVATION layer
     :param activations_prev: activations of the previous layer
@@ -93,11 +93,12 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
         a, activation_cache = soft_max(z)
     else:
         raise RuntimeError('Unknown activation function')
-    cache = {'linear_cache': linear_cache, 'activation_cache': activation_cache}
+    if not test_mode:
+        cache = {'linear_cache': linear_cache, 'activation_cache': activation_cache}
     return a, cache
 
 
-def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchnorm: bool = False) -> Tuple[
+def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchnorm: bool = False, test_mode = False) -> Tuple[
     np.ndarray, Dict]:
     """
     Forward propagation for all of the network's layers and applying batchnorm if needed
@@ -111,10 +112,11 @@ def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchn
     caches = {}
     for index, layer in parameters.items():
         (a, cache) = linear_activation_forward(a, layer.weights, layer.bias,
-                                               layer.activation_func)
+                                               layer.activation_func, test_mode)
         if use_batchnorm:  # apply batchnorm after activation
             a = apply_batchnorm(a)
-        caches[index] = cache
+        if not test_mode:
+            caches[index] = cache
 
     return a, caches
 
@@ -287,13 +289,13 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     costs = []
     best_loss = 1000
     best_parameters = None
-    no_improvement_in_succession = 0
+    no_improved_epochs_in_succession = 0
 
 
     for epoch in range(num_iterations):
-        if no_improvement_in_succession == 1000:
+        if no_improved_epochs_in_succession == 1000:
             break
-        # _x, y_validation, _y, y_validation = train_test_split(X, Y, test_size=1/5, random_state=0)
+        # _x, x_validation, _y, y_validation = train_test_split(X, Y, test_size=1/5, random_state=0)
         batch_counter = 0  # for report every batch is one iteration
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
@@ -301,15 +303,17 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
             y_pred, caches = linear_model_forward(x_sub, params)
-            # TODO: use for stop criteria x_validation y_validation
+            # TODO: use for stop criteria loss for x_validation y_validation
+            # y = linear_model_forward(x_validation, params, test_mode = true)
+            # loss = compute_cost(y, y_validation)
             L = compute_cost(y_pred, y_sub)
             if L < best_loss:
                 best_loss = L
                 best_parameters = params
-                no_improvement_in_succession = 0
-            elif no_improvement_in_succession < 1000:
-                no_improvement_in_succession += 1
-            elif no_improvement_in_succession == 1000:
+                no_improved_epochs_in_succession = 0
+            elif no_improved_epochs_in_succession < 1000:
+                no_improved_epochs_in_succession += 1
+            elif no_improved_epochs_in_succession == 1000:
                 break
             if batch_counter % publish_L_at_epoch == 0:
                 print(L)
