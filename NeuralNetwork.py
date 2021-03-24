@@ -267,7 +267,7 @@ def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.ndarray]
     return result
 
 
-def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=100) -> Tuple[Dict[int, Layer], List]:
+def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=64) -> Tuple[Dict[int, Layer], List]:
     """
     Implementation of a L-layer neural network
     :param X: the input data, a numpy array of shape (height*width , number_of_examples)
@@ -280,26 +280,48 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
         parameters – the parameters learnt by the system during the training (the same parameters that were updated in the update_parameters function).
         costs – the values of the cost function (calculated by the compute_cost function). One value is to be saved after each 100 training iterations (e.g. 3000 iterations -> 30 values).
     """
-
+    from sklearn.model_selection import train_test_split
     params = initialize_parameters(layers_dims)
     number_of_samples = X.shape[1]
     publish_L_at_epoch = 99
     costs = []
+    best_loss = 1000
+    best_parameters = None
+    no_improvement_in_succession = 0
+
 
     for epoch in range(num_iterations):
+        if no_improvement_in_succession == 1000:
+            break
+        # _x, y_validation, _y, y_validation = train_test_split(X, Y, test_size=1/5, random_state=0)
+        batch_counter = 0  # for report every batch is one iteration
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
                     offset + batch_size) % number_of_samples
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
             y_pred, caches = linear_model_forward(x_sub, params)
+            # TODO: use for stop criteria x_validation y_validation
             L = compute_cost(y_pred, y_sub)
-            if epoch > publish_L_at_epoch:
+            if L < best_loss:
+                best_loss = L
+                best_parameters = params
+                no_improvement_in_succession = 0
+            elif no_improvement_in_succession < 1000:
+                no_improvement_in_succession += 1
+            elif no_improvement_in_succession == 1000:
+                break
+            if batch_counter % publish_L_at_epoch == 0:
+                print(L)
                 costs.append(L)
-                publish_L_at_epoch += 100
+            batch_counter += 1
+            # if epoch > publish_L_at_epoch:
+            #     print(L)
+            #     costs.append(L)
+            #     publish_L_at_epoch += 100
             grads = linear_model_backward(y_pred, y_sub, caches)
             params = update_parameters(params, grads, learning_rate)
-    return params, costs
+    return best_parameters, costs
 
 def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> np.ndarray:
     """
