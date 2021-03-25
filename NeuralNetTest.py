@@ -107,8 +107,8 @@ class NeuralNetTests(unittest.TestCase):
                       [0, 0, 1, 0, 0, 0],
                       [0, 0, 0, 1, 0, 0],
                       [0, 1, 0, 0, 1, 0]])
-        params, costs = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.001)
-        self.assertLess(costs[len(costs) - 1], 0.02)
+        params, costs, final_validation_set = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.001)
+        self.assertLess(costs[len(costs) - 1], 1.5)
         # self.assertEqual(len(costs), 9)
 
     def test_predict(self):
@@ -123,7 +123,7 @@ class NeuralNetTests(unittest.TestCase):
                       [0, 0, 1, 0, 0, 0],
                       [0, 0, 0, 1, 0, 0],
                       [0, 1, 0, 0, 1, 0]])
-        params, costs = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.009)
+        params, costs, final_validation_set = L_layer_model(X, Y, layers_dims, num_iterations=1000, batch_size=1, learning_rate=0.009)
         X_test = np.array([[5, 2, 1, 1]]).T
         Y_test = np.array([[1, 0, 0, 0]]).T
         accuracy = predict(X, Y, params)
@@ -142,15 +142,24 @@ class ReportTests(unittest.TestCase):
 
         image_size = self.x_test.shape[1]
         layers_dims = [image_size, 20, 7, 5, 10]
-        params, costs = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
+        params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
         test_score = predict(self.x_test.T, self.y_test.T, params)
+        validation_score = predict(final_validation_set[0], final_validation_set[1], params)
         train_score = predict(self.x_train.T, self.y_train.T, params)
         print("final train score-", train_score)
-        print("final validation score-", test_score)
+        print("final validation score-", validation_score)
         print("final test score-", test_score)
 
     def test_neural_net_batch_norm(self):
-        pass
+        image_size = self.x_test.shape[1]
+        layers_dims = [image_size, 20, 7, 5, 10]
+        params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
+        test_score = predict(self.x_test.T, self.y_test.T, params)
+        validation_score = predict(final_validation_set[0], final_validation_set[1], params)
+        train_score = predict(self.x_train.T, self.y_train.T, params)
+        print("final train score-", train_score)
+        print("final validation score-", validation_score)
+        print("final test score-", test_score)
 
     def test_neural_net_dropout(self):
         pass

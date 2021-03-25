@@ -1,8 +1,10 @@
+import sys
 from typing import List, Dict, Tuple
 import numpy as np
 
 SOFTMAX = "softmax"
 RELU = "relu"
+use_batch_norm = False
 
 
 class Layer(object):
@@ -122,7 +124,7 @@ def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchn
     return a, caches
 
 
-def compute_cost(label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) -> np.ndarray:
+def compute_cost(label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) -> float:
     """
     Calculate cost function - categorical cross-entropy loss
     :param epsilon: to avoid log(0)
@@ -289,9 +291,9 @@ def get_shuffle_validation(x: np.ndarray, y: np.ndarray, test_ratio=1.0/5):
     return x_validation, y_validation
 
 
-def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=64) -> Tuple[Dict[int, Layer], List]:
+def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=64) -> Tuple[Dict[int, Layer], List, Tuple]:
     """
-    Implementation of a L-layer neural network
+    Implementation of a batch_loss-layer neural network
     :param X: the input data, a numpy array of shape (height*width , number_of_examples)
     :param Y: the “real” labels of the data, a vector of shape (num_of_classes, number of examples)
     :param layers_dims: a list containing the dimensions of each layer, including the input
@@ -300,50 +302,52 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     :param batch_size: a number of samples to consider for a single parameters update
     :return:
         parameters – the parameters learnt by the system during the training (the same parameters that were updated in the update_parameters function).
-        costs – the values of the cost function (calculated by the compute_cost function). One value is to be saved after each 100 training iterations (e.g. 3000 iterations -> 30 values).
+        costs – the values of the cost function, One value is to be saved after each 100 training iterations/batches.
+        final_validation_sets - the final validation set that training stopped upon
     """
     params = initialize_parameters(layers_dims)
     number_of_samples = X.shape[1]
-    publish_L_at_epoch = 99
+    publish_cost_every_n_batches = 100
     costs = []
-    best_loss = 1000
+    highest_validation_score = 0
     best_parameters = None
     no_improved_epochs_in_succession = 0
+    max_no_improved_epochs_in_succession_allowed = 100
+    final_validation_sets = None
 
     for epoch in range(num_iterations):
-        if no_improved_epochs_in_succession == 1000:
-            break
         x_validation, y_validation = get_shuffle_validation(X, Y)
         validation_acc = predict(x_validation, y_validation, params)
-        print("Validation acc = ", validation_acc)
-        batch_counter = 0  # for report every batch is one iteration
+        print("Epoch ", epoch, " Validation acc = ", validation_acc)
+
+        if validation_acc > highest_validation_score + 0.01:
+            highest_validation_score = validation_acc
+            print("new best validation accuracy ", highest_validation_score)
+            no_improved_epochs_in_succession = 0
+        elif no_improved_epochs_in_succession < max_no_improved_epochs_in_succession_allowed:
+            no_improved_epochs_in_succession += 1
+        elif no_improved_epochs_in_succession == max_no_improved_epochs_in_succession_allowed:
+            best_parameters = params
+            final_validation_sets = (x_validation, y_validation)
+            break  # done training
+
+        batch_counter = 0  # use for report every batch is one iteration
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
                     offset + batch_size) % number_of_samples
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
             y_pred, caches = linear_model_forward(x_sub, params)
-            # TODO: use for stop criteria the validation_acc
-            L = compute_cost(y_pred, y_sub)
-            if L < best_loss:
-                best_loss = L
-                best_parameters = params
-                no_improved_epochs_in_succession = 0
-            elif no_improved_epochs_in_succession < 1000:
-                no_improved_epochs_in_succession += 1
-            elif no_improved_epochs_in_succession == 1000:
-                break
-            if batch_counter % publish_L_at_epoch == 0:
-                print(L)
-                costs.append(L)
+            batch_loss = compute_cost(y_pred, y_sub)
+
+            if batch_counter % publish_cost_every_n_batches == 0:
+                print("every 100 batch cost - ", batch_loss)
+                costs.append(batch_loss)
             batch_counter += 1
-            # if epoch > publish_L_at_epoch:
-            #     print(L)
-            #     costs.append(L)
-            #     publish_L_at_epoch += 100
             grads = linear_model_backward(y_pred, y_sub, caches)
             params = update_parameters(params, grads, learning_rate)
-    return best_parameters, costs
+    return best_parameters, costs, final_validation_sets
+
 
 def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
     """

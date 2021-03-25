@@ -52,7 +52,7 @@ def main():
     y_test = one_hot(y_test, 10)
     image_size = x_test.shape[1]
     layers_dims = [image_size, 20, 7, 5, 10]
-    params, costs = L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
+    params, costs, final_validation_set = L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
     print(costs)
 
 if __name__ == "__main__":
