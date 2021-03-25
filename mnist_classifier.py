@@ -1,6 +1,6 @@
 import numpy as np
 from tensorflow import keras
-from NeuralNetwork import *
+from NeuralNet import *
 
 np.random.seed(101)
 

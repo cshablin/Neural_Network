@@ -1,11 +1,10 @@
 import unittest
-import numpy as np
-from NeuralNetwork import *
+from mnist_classifier import *
 
 np.random.seed(101)
 
 
-class NeuralNetworkTests(unittest.TestCase):
+class NeuralNetTests(unittest.TestCase):
 
     def test_init_layers(self):
         layers_dims = [2, 3, 4]
@@ -133,3 +132,21 @@ class NeuralNetworkTests(unittest.TestCase):
         # self.assertGreater(accuracy, 0.3)
 
 
+class ReportTests(unittest.TestCase):
+    (x_train, y_train), (x_test, y_test) = load_data()
+    y_train = one_hot(y_train, 10)
+    y_test = one_hot(y_test, 10)
+
+    def test_neural_net_regular(self):
+
+        image_size = self.x_test.shape[1]
+        layers_dims = [image_size, 20, 7, 5, 10]
+        params, costs = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
+        test_score = predict(self.x_test.T, self.y_test.T, params)
+        print("score-", test_score)
+
+    def test_neural_net_batch_norm(self):
+        pass
+
+    def test_neural_net_dropout(self):
+        pass
