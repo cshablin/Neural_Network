@@ -1,6 +1,5 @@
 import numpy as np
 from tensorflow import keras
-from NeuralNet import *
 
 np.random.seed(101)
 
@@ -46,14 +45,14 @@ def load_data():
     #        (transform_x(x_validation), transform_y(y_validation)), \
     #        (transform_x(x_test), transform_y(y_test))
 
-def main():
-    (x_train, y_train), (x_test, y_test) = load_data()
-    y_train = one_hot(y_train, 10)
-    y_test = one_hot(y_test, 10)
-    image_size = x_test.shape[1]
-    layers_dims = [image_size, 20, 7, 5, 10]
-    params, costs, final_validation_set = L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
-    print(costs)
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     (x_train, y_train), (x_test, y_test) = load_data()
+#     y_train = one_hot(y_train, 10)
+#     y_test = one_hot(y_test, 10)
+#     image_size = x_test.shape[1]
+#     layers_dims = [image_size, 20, 7, 5, 10]
+#     params, costs, final_validation_set = L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
+#     print(costs)
+#
+# if __name__ == "__main__":
+#     main()
