@@ -86,6 +86,7 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
     :param activation: activation function to be used (“softmax” or “relu”)
     :return: tuple of activations of the current layer and a dictionary of linear_cache and activation_cache
     """
+    cache = None
     z, linear_cache = linear_forward(activations_prev, weights, bias)
     if activation == RELU:
         a, activation_cache = relu(z)
@@ -269,6 +270,25 @@ def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.ndarray]
     return result
 
 
+def get_shuffle_validation(x: np.ndarray, y: np.ndarray, test_ratio=1.0/5):
+    """
+
+    :param x: he input data, a numpy array of shape (height*width , number_of_examples)
+    :param y: the “real” labels of the data, a vector of shape (num_of_classes, number of examples)
+    :param test_ratio: portion of data to be in validation set
+    :return:
+        x_validation: randomly chosen from X
+        y_validation: randomly chosen from Y
+    """
+    from sklearn.model_selection import train_test_split
+    xy_matrix = np.concatenate((x.T, y.T), axis=1)
+    _, xy_validation = train_test_split(xy_matrix, test_size=test_ratio)
+    res = np.split(xy_validation, [x.shape[0], ], axis=1)
+    x_validation = res[0].T
+    y_validation = res[1].T
+    return x_validation, y_validation
+
+
 def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=64) -> Tuple[Dict[int, Layer], List]:
     """
     Implementation of a L-layer neural network
@@ -282,7 +302,6 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
         parameters – the parameters learnt by the system during the training (the same parameters that were updated in the update_parameters function).
         costs – the values of the cost function (calculated by the compute_cost function). One value is to be saved after each 100 training iterations (e.g. 3000 iterations -> 30 values).
     """
-    from sklearn.model_selection import train_test_split
     params = initialize_parameters(layers_dims)
     number_of_samples = X.shape[1]
     publish_L_at_epoch = 99
@@ -291,11 +310,12 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     best_parameters = None
     no_improved_epochs_in_succession = 0
 
-
     for epoch in range(num_iterations):
         if no_improved_epochs_in_succession == 1000:
             break
-        # _x, x_validation, _y, y_validation = train_test_split(X, Y, test_size=1/5, random_state=0)
+        x_validation, y_validation = get_shuffle_validation(X, Y)
+        validation_acc = predict(x_validation, y_validation, params)
+        print("Validation acc = ", validation_acc)
         batch_counter = 0  # for report every batch is one iteration
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
@@ -303,9 +323,7 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
             y_pred, caches = linear_model_forward(x_sub, params)
-            # TODO: use for stop criteria loss for x_validation y_validation
-            # y = linear_model_forward(x_validation, params, test_mode = true)
-            # loss = compute_cost(y, y_validation)
+            # TODO: use for stop criteria the validation_acc
             L = compute_cost(y_pred, y_sub)
             if L < best_loss:
                 best_loss = L
@@ -327,7 +345,7 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
             params = update_parameters(params, grads, learning_rate)
     return best_parameters, costs
 
-def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> np.ndarray:
+def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
     """
     Calculates the accuracy of the trained neural network on the data
     :param X: the input data, a numpy array of shape (height*width , number_of_examples)
@@ -336,7 +354,7 @@ def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> np.ndarray:
     :return: the accuracy measure of the neural net on the provided data
     """
     positives = 0
-    y_pred, caches = linear_model_forward(X, parameters)
+    y_pred, caches = linear_model_forward(X, parameters, test_mode=True)
     y_pred = soft_max(y_pred)[0]
     n_samples = y_pred.shape[1]
     for index in range(n_samples):
