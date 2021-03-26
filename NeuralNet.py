@@ -116,7 +116,7 @@ def linear_model_forward(x: np.ndarray, parameters: Dict[int, Layer], use_batchn
     for index, layer in parameters.items():
         (a, cache) = linear_activation_forward(a, layer.weights, layer.bias,
                                                layer.activation_func, test_mode)
-        if use_batchnorm:  # apply batchnorm after activation
+        if use_batchnorm and index < len(parameters):  # apply batchnorm after activation
             a = apply_batchnorm(a)
         if not test_mode:
             caches[index] = cache
@@ -137,7 +137,7 @@ def compute_cost(label_predictions: np.ndarray, y: np.ndarray, epsilon=1e-12) ->
     return -np.sum(y * np.log(label_predictions)) / n_samples
 
 
-def apply_batchnorm(activations: np.ndarray, epsilon=1e-12) -> np.ndarray:
+def apply_batchnorm(activations: np.ndarray, epsilon=1e-9) -> np.ndarray:
     """
     Prior activation batch normalization
     :param epsilon: to avoid division by 0
@@ -322,12 +322,12 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
 
         if validation_acc > highest_validation_score + 0.01:
             highest_validation_score = validation_acc
+            best_parameters = params
             print("new best validation accuracy ", highest_validation_score)
             no_improved_epochs_in_succession = 0
         elif no_improved_epochs_in_succession < max_no_improved_epochs_in_succession_allowed:
             no_improved_epochs_in_succession += 1
         elif no_improved_epochs_in_succession == max_no_improved_epochs_in_succession_allowed:
-            best_parameters = params
             final_validation_sets = (x_validation, y_validation)
             break  # done training
 

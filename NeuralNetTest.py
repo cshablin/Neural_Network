@@ -171,8 +171,6 @@ class ReportTests(unittest.TestCase):
         print("final test score-", test_score)
 
     def test_neural_net_batch_norm(self):
-        # global use_batch_norm
-        # use_batch_norm = True
         image_size = self.x_test.shape[1]
         layers_dims = [image_size, 20, 7, 5, 10]
         params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
