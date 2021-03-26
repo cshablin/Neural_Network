@@ -1,10 +1,10 @@
-import sys
 from typing import List, Dict, Tuple
 import numpy as np
+import globals
 
 SOFTMAX = "softmax"
 RELU = "relu"
-use_batch_norm = False
+globals.initialize()
 
 
 class Layer(object):
@@ -337,7 +337,7 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
                     offset + batch_size) % number_of_samples
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
-            y_pred, caches = linear_model_forward(x_sub, params)
+            y_pred, caches = linear_model_forward(x_sub, params, use_batchnorm=globals.use_batch_norm)
             batch_loss = compute_cost(y_pred, y_sub)
 
             if batch_counter % publish_cost_every_n_batches == 0:
@@ -358,7 +358,7 @@ def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
     :return: the accuracy measure of the neural net on the provided data
     """
     positives = 0
-    y_pred, caches = linear_model_forward(X, parameters, test_mode=True)
+    y_pred, caches = linear_model_forward(X, parameters, test_mode=True, use_batchnorm=globals.use_batch_norm)
     y_pred = soft_max(y_pred)[0]
     n_samples = y_pred.shape[1]
     for index in range(n_samples):
