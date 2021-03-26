@@ -10,25 +10,7 @@ np.random.seed(101)
 #     return result
 
 
-def one_hot(vector, num_classes):
-    """
 
-    :param vector: of shape (n,) with numbers within 0..num_classes-1
-    :param num_classes:
-    :return: transformed to (n, num_classes)
-    """
-    return np.squeeze(np.eye(num_classes)[vector.reshape(-1)])
-
-
-def transform_x(x_array):
-    return x_array / 255
-
-
-def load_data():
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-
-    return (transform_x(x_train.reshape(*x_train.shape[:1], -1)), y_train), \
-           (transform_x(x_test.reshape(*x_test.shape[:1], -1)), y_test)
 
     # test_size = y_test.shape[0]
     # image_size = x_test.shape[1] * x_test.shape[2]
