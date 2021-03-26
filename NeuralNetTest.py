@@ -161,20 +161,21 @@ class ReportTests(unittest.TestCase):
 
     def test_neural_net_regular(self):
         globals.use_batch_norm = False
-
-        image_size = self.x_test.shape[1]
-        layers_dims = [image_size, 20, 7, 5, 10]
-        params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
-        test_score = predict(self.x_test.T, self.y_test.T, params)
-        validation_score = predict(final_validation_set[0], final_validation_set[1], params)
-        train_score = predict(self.x_train.T, self.y_train.T, params)
-        print("final train score-", train_score)
-        print("final validation score-", validation_score)
-        print("final test score-", test_score)
+        globals.use_dropout = False
+        self.__run_test()
 
     def test_neural_net_batch_norm(self):
         globals.use_batch_norm = True
+        globals.use_dropout = False
+        self.__run_test()
 
+    def test_neural_net_dropout(self):
+        globals.use_batch_norm = False
+        globals.use_dropout = True
+        # self.__run_test()
+        pass
+
+    def __run_test(self):
         image_size = self.x_test.shape[1]
         layers_dims = [image_size, 20, 7, 5, 10]
         params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
@@ -184,6 +185,3 @@ class ReportTests(unittest.TestCase):
         print("final train score-", train_score)
         print("final validation score-", validation_score)
         print("final test score-", test_score)
-
-    def test_neural_net_dropout(self):
-        pass
