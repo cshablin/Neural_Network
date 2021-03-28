@@ -21,6 +21,11 @@ class LinearCache(object):
         self.activation = activation
 
 
+class DropoutCache(object):
+    def __init__(self, mask: np.ndarray):
+        self.mask = mask
+
+
 def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
     """
     Initialize weights and biases for all of the layers of the network
@@ -31,8 +36,10 @@ def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
 
     for layer in range(1, len(layer_dims), 1):
         weight_layer_shape = (layer_dims[layer], layer_dims[layer - 1])
-        weight_matrix = np.random.uniform(-1.0, 1.0,
-                                          weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
+        if globals.init_weights_type == globals.InitWeightsType.Uniformly:
+            weight_matrix = np.random.uniform(-1.0, 1.0, weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
+        elif globals.init_weights_type == globals.InitWeightsType.NormalDistribution:
+            weight_matrix = np.random.randn(layer_dims[layer], layer_dims[layer - 1]) * np.sqrt(2 / layer_dims[layer - 1])
         bias_shape = (layer_dims[layer], 1)
         bias_vector = np.zeros(bias_shape)  # this should be zeros only
         activation_function = SOFTMAX if layer == len(layer_dims) - 1 else RELU
@@ -89,7 +96,12 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
     :return: tuple of activations of the current layer and a dictionary of linear_cache and activation_cache
     """
     cache = None
+    dropout_cache = None
     z, linear_cache = linear_forward(activations_prev, weights, bias)
+
+    if globals.use_dropout:  # do dropout before activation for efficiency
+        z, dropout_cache = dropout_forward(z, test_mode=test_mode)
+
     if activation == RELU:
         a, activation_cache = relu(z)
     elif activation == SOFTMAX:
@@ -97,7 +109,7 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
     else:
         raise RuntimeError('Unknown activation function')
     if not test_mode:
-        cache = {'linear_cache': linear_cache, 'activation_cache': activation_cache}
+        cache = {'linear_cache': linear_cache, 'activation_cache': activation_cache, 'dropout_cache': dropout_cache}
     return a, cache
 
 
@@ -187,16 +199,53 @@ def linear_activation_backward(da: np.ndarray, cache: Dict[str, np.ndarray], act
     """
     activation_cache = cache["activation_cache"]
     linear_cache = cache["linear_cache"]
+    dropout_cache = cache["dropout_cache"]
     if activation == RELU:
         dz = __relu_backward(da, activation_cache)
-        da_prev, dw, db = linear_backward(dz, linear_cache)
     elif activation == SOFTMAX:
         dz = __softmax_backward(da, activation_cache)
-        da_prev, dw, db = linear_backward(dz, linear_cache)
     else:
         raise RuntimeError('Unknown activation function')
 
+    if globals.use_dropout:
+        dz = dropout_backward(dz, dropout_cache)
+
+    da_prev, dw, db = linear_backward(dz, linear_cache)
+
     return da_prev, dw, db
+
+
+def dropout_forward(activations: np.ndarray, test_mode=False) -> Tuple[np.ndarray, DropoutCache]:
+    """
+    dropout_forward activation function
+    :param activations:  the activation values of the layer
+    :param test_mode: false represent training and true for test/predict
+    :return: activations of the layer
+    """
+
+    mask = None
+    if not test_mode:  # train
+        # mask = np.random.rand(*activations.shape) < globals.dropout_keep_probability
+        mask = np.random.rand(activations.shape[0], activations.shape[1]) < globals.dropout_keep_probability
+        out = activations * mask
+        # since we don’t use Dropout in test time, then the expected output of the layer is x (activations)
+        # so we make the expectation of layer output to be x instead of p*x (p*activations)
+        out = out / globals.dropout_keep_probability
+    else:  # test / predict
+        out = activations
+    return out, DropoutCache(mask)
+
+
+def dropout_backward(da: np.ndarray, dropout_cache: DropoutCache) -> np.ndarray:
+    """
+
+    :param da: the post-activation gradient
+    :param dropout_cache: DropoutCache that has mask from forward pass
+    :return dz: Gradient of the cost with respect to Z
+    """
+    #  dL/dz = dL/da * da/dz = da * (1/keep_prob)
+    dz = da * dropout_cache.mask
+    return dz / globals.dropout_keep_probability
 
 
 def __relu_backward(da: np.ndarray, activation_cache: np.ndarray) -> np.ndarray:

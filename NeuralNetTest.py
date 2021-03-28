@@ -25,6 +25,7 @@ def load_data():
     return (transform_x(x_train.reshape(*x_train.shape[:1], -1)), y_train), \
            (transform_x(x_test.reshape(*x_test.shape[:1], -1)), y_test)
 
+
 class NeuralNetTests(unittest.TestCase):
 
     def test_init_layers(self):
@@ -162,18 +163,22 @@ class ReportTests(unittest.TestCase):
     def test_neural_net_regular(self):
         globals.use_batch_norm = False
         globals.use_dropout = False
+        # globals.InitWeightsType = globals.InitWeightsType.Uniformly
         self.__run_test()
 
     def test_neural_net_batch_norm(self):
         globals.use_batch_norm = True
         globals.use_dropout = False
+        # globals.InitWeightsType = globals.InitWeightsType.Uniformly
         self.__run_test()
 
     def test_neural_net_dropout(self):
         globals.use_batch_norm = False
         globals.use_dropout = True
-        # self.__run_test()
-        pass
+        # globals.init_weights_type = globals.InitWeightsType.NormalDistribution
+        globals.dropout_keep_probability = 0.8
+        self.__run_test()
+
 
     def __run_test(self):
         image_size = self.x_test.shape[1]
