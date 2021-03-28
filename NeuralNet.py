@@ -5,6 +5,8 @@ import numpy as np
 SOFTMAX = "softmax"
 RELU = "relu"
 use_batch_norm = False
+x_val = None
+y_val = None
 
 
 class Layer(object):
@@ -31,8 +33,9 @@ def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
 
     for layer in range(1, len(layer_dims), 1):
         weight_layer_shape = (layer_dims[layer], layer_dims[layer - 1])
-        weight_matrix = np.random.uniform(-1.0, 1.0,
-                                          weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
+        # weight_matrix = np.random.uniform(-1.0, 1.0,
+        #                                   weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
+        weight_matrix = np.random.randn(weight_layer_shape[0], weight_layer_shape[1])*np.sqrt(2/weight_layer_shape[1])
         bias_shape = (layer_dims[layer], 1)
         bias_vector = np.zeros(bias_shape)  # this should be zeros only
         activation_function = SOFTMAX if layer == len(layer_dims) - 1 else RELU
@@ -63,7 +66,7 @@ def soft_max(z: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     :return: tuple of activations of the layer and activation cache
     """
 
-    z_exp = np.exp(z)
+    z_exp = np.exp(z - np.max(z)/5) # preventing nans, a^(b-c) = (z^b)/(a^c)
     return z_exp / np.sum(z_exp, axis=0), z
 
 
@@ -94,6 +97,8 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
         a, activation_cache = relu(z)
     elif activation == SOFTMAX:
         a, activation_cache = soft_max(z)
+        if np.isnan(a).any():
+            print('softmax contains nans')
     else:
         raise RuntimeError('Unknown activation function')
     if not test_mode:
@@ -272,25 +277,6 @@ def update_parameters(parameters: Dict[int, Layer], grads: Dict[str, np.ndarray]
     return result
 
 
-def get_shuffle_validation(x: np.ndarray, y: np.ndarray, test_ratio=1.0/5):
-    """
-
-    :param x: he input data, a numpy array of shape (height*width , number_of_examples)
-    :param y: the “real” labels of the data, a vector of shape (num_of_classes, number of examples)
-    :param test_ratio: portion of data to be in validation set
-    :return:
-        x_validation: randomly chosen from X
-        y_validation: randomly chosen from Y
-    """
-    from sklearn.model_selection import train_test_split
-    xy_matrix = np.concatenate((x.T, y.T), axis=1)
-    _, xy_validation = train_test_split(xy_matrix, test_size=test_ratio)
-    res = np.split(xy_validation, [x.shape[0], ], axis=1)
-    x_validation = res[0].T
-    y_validation = res[1].T
-    return x_validation, y_validation
-
-
 def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate=0.01, num_iterations=10, batch_size=64) -> Tuple[Dict[int, Layer], List, Tuple]:
     """
     Implementation of a batch_loss-layer neural network
@@ -311,42 +297,48 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     costs = []
     highest_validation_score = 0
     best_parameters = None
-    no_improved_epochs_in_succession = 0
-    max_no_improved_epochs_in_succession_allowed = 100
-    final_validation_sets = None
+    no_improvment_iterations = 0
+    max_no_improvment_iterations_allowed = 200
+    epsilon = 1e-3
+    best_batch = 0
+    MAXIMUM_EPOCH_COUNT = 1000
 
-    for epoch in range(num_iterations):
-        x_validation, y_validation = get_shuffle_validation(X, Y)
-        validation_acc = predict(x_validation, y_validation, params)
-        print("Epoch ", epoch, " Validation acc = ", validation_acc)
+    batch_counter = 0  # use for report every batch is one iteration
+    for epoch in range(MAXIMUM_EPOCH_COUNT):
 
-        if validation_acc > highest_validation_score + 0.01:
-            highest_validation_score = validation_acc
-            best_parameters = params
-            print("new best validation accuracy ", highest_validation_score)
-            no_improved_epochs_in_succession = 0
-        elif no_improved_epochs_in_succession < max_no_improved_epochs_in_succession_allowed:
-            no_improved_epochs_in_succession += 1
-        elif no_improved_epochs_in_succession == max_no_improved_epochs_in_succession_allowed:
-            final_validation_sets = (x_validation, y_validation)
-            break  # done training
+        # print("Epoch ", epoch)#, " Validation acc = ", validation_acc)
 
-        batch_counter = 0  # use for report every batch is one iteration
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
                     offset + batch_size) % number_of_samples
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
-            y_pred, caches = linear_model_forward(x_sub, params)
+            y_pred, caches = linear_model_forward(x_sub, params, use_batchnorm=use_batch_norm)
             batch_loss = compute_cost(y_pred, y_sub)
 
             if batch_counter % publish_cost_every_n_batches == 0:
-                print("every 100 batch cost - ", batch_loss)
+                print(f"{epoch},{batch_counter},{batch_loss}")
                 costs.append(batch_loss)
+
             batch_counter += 1
             grads = linear_model_backward(y_pred, y_sub, caches)
             params = update_parameters(params, grads, learning_rate)
-    return best_parameters, costs, final_validation_sets
+
+            if epoch > 0:
+                validation_acc = predict(x_val.T, y_val.T, params)
+                # validation_acc =
+                if best_batch < validation_acc - epsilon:
+                    # print(f'Improving accuracy from {best_batch} to {validation_acc}')
+                    best_batch = validation_acc
+                    best_parameters = params
+                    no_improvment_iterations = 0
+                elif no_improvment_iterations < max_no_improvment_iterations_allowed:
+                    no_improvment_iterations += 1
+                elif no_improvment_iterations == max_no_improvment_iterations_allowed:
+                    print(f'The criteria reached, stopped after {epoch} epochs and {batch_counter} iterations')
+                    return best_parameters, costs
+    print('Limit of epochs was reached, not converged until the criteria')
+    return best_parameters, costs
 
 
 def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
@@ -368,3 +360,22 @@ def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
             positives += 1
 
     return positives/n_samples
+
+def one_hot(vector, num_classes):
+    """
+    Given the original vector of indexes, generates num_class sized vectors with 1 at input-index and zeros at rest
+    :param vector: of shape (n,) with numbers within 0..num_classes-1
+    :param num_classes:
+    :return: transformed to (n, num_classes)
+    """
+    return np.squeeze(np.eye(num_classes)[vector.reshape(-1)])
+
+
+def transform_x(x_array):
+    """
+    Normalizes the input matrix
+    :param x_array: matrix of numbers
+    :return: matrix with normalized values with a maximum of 1.
+    """
+    return x_array / np.amax(x_array)
+

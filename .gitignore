@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 ## Directory-based project format:
 .idea/
+
+#docx temp
+~*.docx

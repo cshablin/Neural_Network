@@ -3,27 +3,6 @@ from NeuralNet import *
 from tensorflow import keras
 np.random.seed(101)
 
-
-def one_hot(vector, num_classes):
-    """
-
-    :param vector: of shape (n,) with numbers within 0..num_classes-1
-    :param num_classes:
-    :return: transformed to (n, num_classes)
-    """
-    return np.squeeze(np.eye(num_classes)[vector.reshape(-1)])
-
-
-def transform_x(x_array):
-    return x_array / 255
-
-
-def load_data():
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-
-    return (transform_x(x_train.reshape(*x_train.shape[:1], -1)), y_train), \
-           (transform_x(x_test.reshape(*x_test.shape[:1], -1)), y_test)
-
 class NeuralNetTests(unittest.TestCase):
 
     def test_init_layers(self):
@@ -150,36 +129,3 @@ class NeuralNetTests(unittest.TestCase):
         self.assertGreater(accuracy, 0.8)
         accuracy = predict(X_test, Y_test, params)
         # self.assertGreater(accuracy, 0.3)
-
-
-class ReportTests(unittest.TestCase):
-    # we use same test train sets for all 3 runs
-    (x_train, y_train), (x_test, y_test) = load_data()
-    y_train = one_hot(y_train, 10)
-    y_test = one_hot(y_test, 10)
-
-    def test_neural_net_regular(self):
-
-        image_size = self.x_test.shape[1]
-        layers_dims = [image_size, 20, 7, 5, 10]
-        params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
-        test_score = predict(self.x_test.T, self.y_test.T, params)
-        validation_score = predict(final_validation_set[0], final_validation_set[1], params)
-        train_score = predict(self.x_train.T, self.y_train.T, params)
-        print("final train score-", train_score)
-        print("final validation score-", validation_score)
-        print("final test score-", test_score)
-
-    def test_neural_net_batch_norm(self):
-        image_size = self.x_test.shape[1]
-        layers_dims = [image_size, 20, 7, 5, 10]
-        params, costs, final_validation_set = L_layer_model(self.x_train.T, self.y_train.T, layers_dims, num_iterations=1000, batch_size=64, learning_rate=0.009)
-        test_score = predict(self.x_test.T, self.y_test.T, params)
-        validation_score = predict(final_validation_set[0], final_validation_set[1], params)
-        train_score = predict(self.x_train.T, self.y_train.T, params)
-        print("final train score-", train_score)
-        print("final validation score-", validation_score)
-        print("final test score-", test_score)
-
-    def test_neural_net_dropout(self):
-        pass
