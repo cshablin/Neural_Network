@@ -1,12 +1,10 @@
 import sys
 from typing import List, Dict, Tuple
 import numpy as np
+import globals
 
 SOFTMAX = "softmax"
 RELU = "relu"
-use_batch_norm = False
-x_val = None
-y_val = None
 
 
 class Layer(object):
@@ -23,6 +21,11 @@ class LinearCache(object):
         self.activation = activation
 
 
+class DropoutCache(object):
+    def __init__(self, mask: np.ndarray):
+        self.mask = mask
+
+
 def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
     """
     Initialize weights and biases for all of the layers of the network
@@ -33,9 +36,10 @@ def initialize_parameters(layer_dims: List[int]) -> Dict[int, Layer]:
 
     for layer in range(1, len(layer_dims), 1):
         weight_layer_shape = (layer_dims[layer], layer_dims[layer - 1])
-        # weight_matrix = np.random.uniform(-1.0, 1.0,
-        #                                   weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
-        weight_matrix = np.random.randn(weight_layer_shape[0], weight_layer_shape[1])*np.sqrt(2/weight_layer_shape[1])
+        if globals.init_weights_type == globals.InitWeightsType.Uniformly:
+            weight_matrix = np.random.uniform(-1.0, 1.0, weight_layer_shape)  # this should be randoms only, for some reason he advices to use randn for nornal distribution
+        elif globals.init_weights_type == globals.InitWeightsType.NormalDistribution:
+            weight_matrix = np.random.randn(weight_layer_shape[0], weight_layer_shape[1]) * np.sqrt(2/weight_layer_shape[1])
         bias_shape = (layer_dims[layer], 1)
         bias_vector = np.zeros(bias_shape)  # this should be zeros only
         activation_function = SOFTMAX if layer == len(layer_dims) - 1 else RELU
@@ -66,7 +70,7 @@ def soft_max(z: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     :return: tuple of activations of the layer and activation cache
     """
 
-    z_exp = np.exp(z - np.max(z)/5) # preventing nans, a^(b-c) = (z^b)/(a^c)
+    z_exp = np.exp(z - np.max(z)) # preventing nans, a^(b-c) = (a^b)/(a^c)
     return z_exp / np.sum(z_exp, axis=0), z
 
 
@@ -91,9 +95,13 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
     :param activation: activation function to be used (“softmax” or “relu”)
     :return: tuple of activations of the current layer and a dictionary of linear_cache and activation_cache
     """
-    cache = None
+    cache = {}
     z, linear_cache = linear_forward(activations_prev, weights, bias)
+
     if activation == RELU:
+        if globals.use_dropout:  # do dropout before activation for efficiency
+            z, dropout_cache = dropout_forward(z, test_mode=test_mode)
+            cache['dropout_cache'] = dropout_cache
         a, activation_cache = relu(z)
     elif activation == SOFTMAX:
         a, activation_cache = soft_max(z)
@@ -102,7 +110,9 @@ def linear_activation_forward(activations_prev: np.ndarray, weights: np.ndarray,
     else:
         raise RuntimeError('Unknown activation function')
     if not test_mode:
-        cache = {'linear_cache': linear_cache, 'activation_cache': activation_cache}
+        cache['linear_cache'] = linear_cache
+        cache['activation_cache'] = activation_cache
+
     return a, cache
 
 
@@ -192,16 +202,53 @@ def linear_activation_backward(da: np.ndarray, cache: Dict[str, np.ndarray], act
     """
     activation_cache = cache["activation_cache"]
     linear_cache = cache["linear_cache"]
+
     if activation == RELU:
         dz = __relu_backward(da, activation_cache)
-        da_prev, dw, db = linear_backward(dz, linear_cache)
+        if globals.use_dropout:
+            dropout_cache = cache["dropout_cache"]
+            dz = dropout_backward(dz, dropout_cache)
     elif activation == SOFTMAX:
         dz = __softmax_backward(da, activation_cache)
-        da_prev, dw, db = linear_backward(dz, linear_cache)
     else:
         raise RuntimeError('Unknown activation function')
 
+    da_prev, dw, db = linear_backward(dz, linear_cache)
+
     return da_prev, dw, db
+
+
+def dropout_forward(activations: np.ndarray, test_mode=False) -> Tuple[np.ndarray, DropoutCache]:
+    """
+    dropout_forward activation function
+    :param activations:  the activation values of the layer
+    :param test_mode: false represent training and true for test/predict
+    :return: activations of the layer
+    """
+
+    mask = None
+    if not test_mode:  # train
+        # mask = np.random.rand(*activations.shape) < globals.dropout_keep_probability
+        mask = np.random.rand(activations.shape[0], activations.shape[1]) < globals.dropout_keep_probability
+        out = activations * mask
+        # since we don’t use Dropout in test time, then the expected output of the layer is x (activations)
+        # so we make the expectation of layer output to be x instead of p*x (p*activations)
+        out = out / globals.dropout_keep_probability
+    else:  # test / predict
+        out = activations
+    return out, DropoutCache(mask)
+
+
+def dropout_backward(da: np.ndarray, dropout_cache: DropoutCache) -> np.ndarray:
+    """
+
+    :param da: the post-activation gradient
+    :param dropout_cache: DropoutCache that has mask from forward pass
+    :return dz: Gradient of the cost with respect to Z
+    """
+    #  dL/dz = dL/da * da/dz = da * (1/keep_prob)
+    dz = da * dropout_cache.mask
+    return dz / globals.dropout_keep_probability
 
 
 def __relu_backward(da: np.ndarray, activation_cache: np.ndarray) -> np.ndarray:
@@ -295,49 +342,43 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     number_of_samples = X.shape[1]
     publish_cost_every_n_batches = 100
     costs = []
-    highest_validation_score = 0
     best_parameters = None
-    no_improvment_iterations = 0
-    max_no_improvment_iterations_allowed = 200
+    max_no_improvment_iterations_allowed = 50
     epsilon = 1e-3
     best_batch = 0
-    MAXIMUM_EPOCH_COUNT = 1000
 
     batch_counter = 0  # use for report every batch is one iteration
-    for epoch in range(MAXIMUM_EPOCH_COUNT):
-
-        # print("Epoch ", epoch)#, " Validation acc = ", validation_acc)
-
+    for epoch in range(globals.MAXIMUM_EPOCH_COUNT):
         for offset in range(0, number_of_samples, batch_size):
             upper_bound = offset + batch_size if (offset + batch_size) <= number_of_samples else offset + (
                     offset + batch_size) % number_of_samples
             x_sub = X[:, offset:upper_bound]
             y_sub = Y[:, offset:upper_bound]
-            y_pred, caches = linear_model_forward(x_sub, params, use_batchnorm=use_batch_norm)
+            y_pred, caches = linear_model_forward(x_sub, params, use_batchnorm=globals.use_batch_norm)
             batch_loss = compute_cost(y_pred, y_sub)
 
             if batch_counter % publish_cost_every_n_batches == 0:
-                print(f"{epoch},{batch_counter},{batch_loss}")
+                print(f"{epoch},{batch_counter},{batch_loss},{best_batch}")
                 costs.append(batch_loss)
+                if epoch > 0:
+                    validation_acc = predict(globals.x_val.T, globals.y_val.T, params)
+                    if best_batch < validation_acc - epsilon:
+                        # print(f'Improving accuracy from {best_batch} to {validation_acc}')
+                        best_batch = validation_acc
+                        best_parameters = params
+                        no_improvment_iterations = 0
+                    elif no_improvment_iterations < max_no_improvment_iterations_allowed:
+                        no_improvment_iterations += 1
+                    elif no_improvment_iterations == max_no_improvment_iterations_allowed:
+                        print(f'The criteria reached, stopped after {epoch} epochs and {batch_counter} iterations')
+                        return best_parameters, costs
 
             batch_counter += 1
             grads = linear_model_backward(y_pred, y_sub, caches)
             params = update_parameters(params, grads, learning_rate)
-
-            if epoch > 0:
-                validation_acc = predict(x_val.T, y_val.T, params)
-                # validation_acc =
-                if best_batch < validation_acc - epsilon:
-                    # print(f'Improving accuracy from {best_batch} to {validation_acc}')
-                    best_batch = validation_acc
-                    best_parameters = params
-                    no_improvment_iterations = 0
-                elif no_improvment_iterations < max_no_improvment_iterations_allowed:
-                    no_improvment_iterations += 1
-                elif no_improvment_iterations == max_no_improvment_iterations_allowed:
-                    print(f'The criteria reached, stopped after {epoch} epochs and {batch_counter} iterations')
-                    return best_parameters, costs
-    print('Limit of epochs was reached, not converged until the criteria')
+            if batch_counter > num_iterations:
+                print('Limit of epochs was reached, not converged until the criteria')
+                return best_parameters, costs
     return best_parameters, costs
 
 
@@ -350,7 +391,7 @@ def predict(X: np.ndarray, Y: np.ndarray, parameters: np.ndarray) -> float:
     :return: the accuracy measure of the neural net on the provided data
     """
     positives = 0
-    y_pred, caches = linear_model_forward(X, parameters, test_mode=True)
+    y_pred, caches = linear_model_forward(X, parameters, test_mode=True, use_batchnorm=globals.use_batch_norm)
     y_pred = soft_max(y_pred)[0]
     n_samples = y_pred.shape[1]
     for index in range(n_samples):

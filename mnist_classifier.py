@@ -1,8 +1,9 @@
-import numpy as np
-import NeuralNet
+import unittest
+from NeuralNet import *
+import time
 from tensorflow import keras
 
-np.random.seed(101)
+
 NUM_OF_CLASSES = 10
 x_train, y_train, x_test, y_test = None, None, None, None
 
@@ -14,15 +15,18 @@ def load_data():
     return (x_train.reshape(*x_train.shape[:1], -1), y_train), (x_test.reshape(*x_test.shape[:1], -1), y_test)
 
 
-def get_shuffle_validation(x: np.ndarray, y: np.ndarray, test_ratio=0.2):
+def split_train_validation(x: np.ndarray, y: np.ndarray, test_ratio=0.2):
     """
-
+    Splits a reshuffled set by given ratio
     :param x: he input data, a numpy array of shape (height*width , number_of_examples)
     :param y: the “real” labels of the data, a vector of shape (num_of_classes, number of examples)
     :param test_ratio: portion of data to be in validation set
     :return:
-        x_validation: randomly chosen from X
-        y_validation: randomly chosen from Y
+        x_train: the rest of X after excluding x_validation
+        y_train: the rest of y after excluding y_validation
+        x_validation: |X|*test_ration randomly chosen samples from X
+        y_validation: |y|*test_ration randomly chosen samples from y
+
     """
     xy_matrix = np.concatenate((x, y.reshape((y.shape[0], 1))),
                                axis=1)  # MemoryError: Unable to allocate array with shape (60000, 794) and data type float64
@@ -36,53 +40,61 @@ def get_shuffle_validation(x: np.ndarray, y: np.ndarray, test_ratio=0.2):
 
 def print_scores(params, costs):
     global x_train, y_train, x_test, y_test
-    test_score = NeuralNet.predict(x_test.T, y_test.T, params)
-    val_score = NeuralNet.predict(NeuralNet.x_val.T, NeuralNet.y_val.T, params)
-    train_score = NeuralNet.predict(x_train.T, y_train.T, params)
+    test_score = predict(x_test.T, y_test.T, params)
+    val_score = predict(globals.x_val.T, globals.y_val.T, params)
+    train_score = predict(x_train.T, y_train.T, params)
     print("final train score-", train_score)
     print("final validation score-", val_score)
     print("final test score-", test_score)
     print(costs)
 
 
-def main():
+class MNIST_classifier(unittest.TestCase):
+    np.random.seed(101)
+    # we use same test train sets for all 3 runs
     global x_train, y_train, x_test, y_test
     (x_train, y_train), (x_test, y_test) = load_data()
-    (x_train, y_train), (NeuralNet.x_val, NeuralNet.y_val) = get_shuffle_validation(x_train,
+    (x_train, y_train), (globals.x_val, globals.y_val) = split_train_validation(x_train,
                                                                                     y_train)  # Do the split but before x_transform, memory consumption
-    y_train = NeuralNet.one_hot(y_train, NUM_OF_CLASSES)
-    y_test = NeuralNet.one_hot(y_test, NUM_OF_CLASSES)
-    NeuralNet.y_val = NeuralNet.one_hot(NeuralNet.y_val, NUM_OF_CLASSES)
-    x_train = NeuralNet.transform_x(x_train)
-    x_test = NeuralNet.transform_x(x_test)
-    NeuralNet.x_val = NeuralNet.transform_x(NeuralNet.x_val)
+    y_train = one_hot(y_train, NUM_OF_CLASSES)
+    y_test = one_hot(y_test, NUM_OF_CLASSES)
+    globals.y_val = one_hot(globals.y_val, NUM_OF_CLASSES)
+    x_train = transform_x(x_train)
+    x_test = transform_x(x_test)
+    globals.x_val = transform_x(globals.x_val)
     image_size = x_test.shape[1]
     layers_dims = [image_size, 20, 7, 5, 10]
 
-    params, costs = NeuralNet.L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=256,
-                                            learning_rate=0.009)
-    print_scores(params, costs)
+    def test_neural_net_regular(self):
+        globals.use_batch_norm = False
+        globals.use_dropout = False
+        print("neural_net_regular")
+        start = time.time()
+        params, costs = L_layer_model(x_train.T, y_train.T, self.layers_dims, num_iterations=100000, batch_size=32,
+                                      learning_rate=0.009)
+        end = time.time()
+        print(f"Execution time [sec]: {end-start}")
+        print_scores(params, costs)
 
-    # NeuralNet.use_batch_norm = True
-    # params, costs = NeuralNet.L_layer_model(x_train.T, y_train.T, layers_dims, num_iterations=1000, batch_size=256,
-    #                                         learning_rate=0.009)
-    print_scores(params, costs)
+    def test_neural_net_batch_norm(self):
+        globals.use_batch_norm = True
+        globals.use_dropout = False
+        print("neural_net_batch_norm")
+        start = time.time()
+        params, costs = L_layer_model(x_train.T, y_train.T, self.layers_dims, num_iterations=100000, batch_size=64,
+                                                learning_rate=0.05)
+        end = time.time()
+        print(f"Execution time [sec]: {end - start}")
+        print_scores(params, costs)
 
-
-if __name__ == "__main__":
-    main()
-
-    # test_size = y_test.shape[0]
-    # image_size = x_test.shape[1] * x_test.shape[2]
-    # xy_test = np.concatenate((x_test.reshape(test_size, -1), y_test.reshape((test_size, 1))), axis=1)  # [x|y]
-    # np.random.shuffle(xy_test)
-    # xy_validation = xy_test[:test_size // 5] # use 20% for validation
-    # xy_test = xy_test[test_size // 5:]
-    # y_validation = xy_validation[:, image_size]
-    # y_test = xy_test[:, image_size]
-    # x_validation = np.delete(xy_validation, image_size, axis=1)
-    # x_test = np.delete(xy_test, image_size, axis=1)
-    # x_train.reshape(test_size, -1)
-    # return (transform_x(x_train), transform_y(y_train)), \
-    #        (transform_x(x_validation), transform_y(y_validation)), \
-    #        (transform_x(x_test), transform_y(y_test))
+    def test_neural_net_dropout(self):
+        globals.use_batch_norm = False
+        globals.use_dropout = True
+        globals.dropout_keep_probability = 0.9
+        print("neural_net_dropout")
+        start = time.time()
+        params, costs = L_layer_model(x_train.T, y_train.T, self.layers_dims, num_iterations=100000, batch_size=32,
+                                      learning_rate=0.009)
+        end = time.time()
+        print(f"Execution time [sec]: {end - start}")
+        print_scores(params, costs)
