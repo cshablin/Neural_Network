@@ -343,7 +343,8 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
     publish_cost_every_n_batches = 100
     costs = []
     best_parameters = None
-    max_no_improvment_iterations_allowed = 50
+    max_no_improvement_iterations_allowed = 50
+    no_improvement_iterations = 0
     epsilon = 1e-3
     best_batch = 0
 
@@ -366,10 +367,10 @@ def L_layer_model(X: np.ndarray, Y: np.ndarray, layers_dims: List, learning_rate
                         # print(f'Improving accuracy from {best_batch} to {validation_acc}')
                         best_batch = validation_acc
                         best_parameters = params
-                        no_improvment_iterations = 0
-                    elif no_improvment_iterations < max_no_improvment_iterations_allowed:
-                        no_improvment_iterations += 1
-                    elif no_improvment_iterations == max_no_improvment_iterations_allowed:
+                        no_improvement_iterations = 0
+                    elif no_improvement_iterations < max_no_improvement_iterations_allowed:
+                        no_improvement_iterations += 1
+                    elif no_improvement_iterations == max_no_improvement_iterations_allowed:
                         print(f'The criteria reached, stopped after {epoch} epochs and {batch_counter} iterations')
                         return best_parameters, costs
 

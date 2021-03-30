@@ -49,13 +49,12 @@ def print_scores(params, costs):
     print(costs)
 
 
-class MNIST_classifier(unittest.TestCase):
+class MNIST_neural_net_test(unittest.TestCase):
     np.random.seed(101)
     # we use same test train sets for all 3 runs
     global x_train, y_train, x_test, y_test
     (x_train, y_train), (x_test, y_test) = load_data()
-    (x_train, y_train), (globals.x_val, globals.y_val) = split_train_validation(x_train,
-                                                                                    y_train)  # Do the split but before x_transform, memory consumption
+    (x_train, y_train), (globals.x_val, globals.y_val) = split_train_validation(x_train, y_train)  # Do the split but before x_transform, memory consumption
     y_train = one_hot(y_train, NUM_OF_CLASSES)
     y_test = one_hot(y_test, NUM_OF_CLASSES)
     globals.y_val = one_hot(globals.y_val, NUM_OF_CLASSES)
