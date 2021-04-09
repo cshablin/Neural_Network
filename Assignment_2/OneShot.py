@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 # from skimage.color import rgb2gray
 import random
-random.seed(101)
+random.seed(51)
 
 
 def load_data(data_dir: str) -> Tuple[Dict[int, List[np.ndarray]], np.ndarray, np.ndarray]:  # Tuple[np.ndarray, np.ndarray]
@@ -81,9 +81,43 @@ class LoadDataTests(unittest.TestCase):
         plt.ylim([0, 65])
         plt.show()
 
-    def test_splitting_data(self):
+    def test_splitting_data_sets_analysis(self):
 
         train, test = split_train_test(self.label_2_images, test_ratio=0.4)
-        validation, test = split_train_test(test, test_ratio=0.5)
-        num_of_train_classes = len(train)
-        num_of_test_classes = len(test)
+        validation, test1 = split_train_test(test, test_ratio=0.5)
+
+        print("# train ", len(train))
+        print("# validation ", len(validation))
+        print("# test ", len(test))
+
+        train_labels = []
+        for train_l, images in train.items():
+            for _ in images:
+                train_labels.append(train_l)
+        plt.hist(train_labels, len(train))
+        plt.xlabel("class in train set")
+        plt.ylabel("num of images")
+        plt.ylim([0, 65])
+        plt.show()
+
+        val_labels = []
+        for train_l, images in validation.items():
+            for _ in images:
+                val_labels.append(train_l)
+        plt.hist(val_labels, len(train))
+        plt.xlabel("class in validation set")
+        plt.ylabel("num of images")
+        plt.ylim([0, 65])
+        plt.show()
+
+        test_labels = []
+        for train_l, images in test.items():
+            for _ in images:
+                test_labels.append(train_l)
+        plt.hist(test_labels, len(train))
+        plt.xlabel("class in test set")
+        plt.ylabel("num of images")
+        plt.ylim([0, 65])
+        plt.show()
+
+
