@@ -65,9 +65,13 @@ def split_train_test(label_2_images: Dict[int, np.ndarray], test_ratio: float = 
 
 
 # call this every epoch
-def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_size: int) -> Tuple[List[np.ndarray], np.ndarray]:
+def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_size: int, twin_percentage: int = 50) -> Tuple[List[np.ndarray], np.ndarray]:
     """
+    prepare balanced data set by 1 - random choosing twin images from labels with more than 1 image
+                                 2 - random choosing pairs from all labels, note the chance of choosing twice the same
+                                 label is scarce so
 
+    :param twin_percentage: percentage of paired images from same label
     :param x_size: number of samples in output data set
     :param label_2_images:  dictionary with keys of int labels representing folders of images and each value is a list of
      images corresponding to it's label/directory
@@ -87,9 +91,9 @@ def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_siz
     all_labels = np.array(all_labels)
     multi_image_labels = np.array(multi_image_labels)
 
-    random_image_labels_sample_1 = np.random.choice(all_labels, x_size // 2)
-    random_image_labels_sample_2 = np.random.choice(all_labels, x_size // 2)
-    random_multi_image_labels = np.random.choice(multi_image_labels, x_size // 2)
+    random_image_labels_sample_1 = np.random.choice(all_labels, int(x_size * ((100 - twin_percentage) / 100.0)))
+    random_image_labels_sample_2 = np.random.choice(all_labels, int(x_size * ((100 - twin_percentage) / 100.0)))
+    random_multi_image_labels = np.random.choice(multi_image_labels, int(x_size * (twin_percentage / 100.0)))
 
     samples_1 = list()
     samples_2 = list()
