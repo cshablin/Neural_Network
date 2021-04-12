@@ -1,5 +1,5 @@
 import unittest
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Any
 
 from skimage import io
 import os
@@ -14,7 +14,7 @@ random.seed(51)
 np.random.seed(51)
 
 
-def load_data(data_dir: str) -> Tuple[Dict[int, np.ndarray], np.ndarray, np.ndarray]:  # Tuple[np.ndarray, np.ndarray]
+def load_data(data_dir: str) -> Tuple[Dict[int, np.ndarray], np.ndarray]:  # Tuple[np.ndarray, np.ndarray]
     # Get all subdirectories of data_dir. Each represents a label.
     directories = [d for d in os.listdir(data_dir)
                    if os.path.isdir(os.path.join(data_dir, d))]
@@ -38,8 +38,8 @@ def load_data(data_dir: str) -> Tuple[Dict[int, np.ndarray], np.ndarray, np.ndar
         label_2_images[directory_counter] = np.array(images_for_dict)
         images_for_dict = []
         directory_counter += 1
-    return label_2_images, np.array(images), np.array(labels)
-    # return np.array(images), np.array(labels)
+    return label_2_images, np.array(labels)
+    # return label_2_images, np.array(images), np.array(labels)
 
 
 def split_train_test(label_2_images: Dict[int, np.ndarray], test_ratio: float = 0.3) \
@@ -62,6 +62,38 @@ def split_train_test(label_2_images: Dict[int, np.ndarray], test_ratio: float = 
     training_dict = dict((key, label_2_images[key]) for key in train_keys
                          if key in label_2_images)
     return training_dict, testing_dict
+
+
+def chose_all_possible_groups(arr, group_size):
+
+    # A temporary array to
+    # store all combination
+    # one by one
+    data = [0]*group_size
+    n = len(arr)
+    # Print all combination
+    # using temprary array 'data[]'
+    output = []
+    return combination_util(arr, data, 0, n - 1, 0, group_size, output)
+
+
+def combination_util(arr, data, start, end, index, group_size, output) -> List[List[Any]]:
+
+    # Current combination is ready
+    # to be printed, print it
+    temp = []
+    if index == group_size:
+        for j in range(group_size):
+            # print(data[j], end = " ")
+            temp.append(data[j])
+        output.append(temp)
+        return
+    i = start
+    while i <= end and end - i + 1 >= group_size - index:
+        data[index] = arr[i]
+        combination_util(arr, data, i + 1, end, index + 1, group_size, output)
+        i += 1
+    return output
 
 
 # call this every epoch
@@ -91,26 +123,44 @@ def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_siz
     all_labels = np.array(all_labels)
     multi_image_labels = np.array(multi_image_labels)
 
-    random_image_labels_sample_1 = np.random.choice(all_labels, int(x_size * ((100 - twin_percentage) / 100.0)))
-    random_image_labels_sample_2 = np.random.choice(all_labels, int(x_size * ((100 - twin_percentage) / 100.0)))
-    random_multi_image_labels = np.random.choice(multi_image_labels, int(x_size * (twin_percentage / 100.0)))
-
     samples_1 = list()
     samples_2 = list()
     labels = list()
+    twin_counter = 0
+    # create same labeled pairs
+    for multi_image_label in multi_image_labels:
+        single_labeled_images = label_2_images[multi_image_label]
+        all_possible_pairs_per_label = chose_all_possible_groups(single_labeled_images, group_size=2)
+        pairs_per_label_counter = 0
+        for possible_pair in all_possible_pairs_per_label:
+            samples_1.append(possible_pair[0] / 255)  # Do not flatten for convolution
+            samples_2.append(possible_pair[1] / 255)
+            labels.append(1)
+            if pairs_per_label_counter > 9:
+                break  # Memory issue to load all possible pairs
+            pairs_per_label_counter += 1
+            twin_counter += 1
+
+    # we want data set to be constructed with 'different' pairs from same image collection so the net could discriminate naturaly
+    # we want having images that are part of a 'different' pairs and also part of 'same' pair, similar idea to "Triple Loss" in Face recognition
+    random_image_labels_sample_1 = np.random.choice(multi_image_labels, int(twin_counter * ((100 - twin_percentage) / 100.0)))
+    random_image_labels_sample_2 = np.random.choice(multi_image_labels, int(twin_counter * ((100 - twin_percentage) / 100.0)))
+    # random_multi_image_labels = np.random.choice(multi_image_labels, int(x_size * (twin_percentage / 100.0)))
+
+
 
     # create same labeled pairs
-    for label in random_multi_image_labels:
-        images = label_2_images[label]
-
-        indices = np.random.choice(images.shape[0], 2, replace=False)
-
-        # twin_image = np.random.choice(images[indices], 2)
-        twin_image = images[indices]
-        twin_image = twin_image.reshape((2, 250**2)) / 255
-        samples_1.append(twin_image[0])
-        samples_2.append(twin_image[1])
-        labels.append(1)
+    # for label in random_multi_image_labels:
+    #     images = label_2_images[label]
+    #
+    #     indices = np.random.choice(images.shape[0], 2, replace=False)
+    #
+    #     # twin_image = np.random.choice(images[indices], 2)
+    #     twin_image = images[indices]
+    #     twin_image = twin_image.reshape((2, 250**2)) / 255
+    #     samples_1.append(twin_image[0])
+    #     samples_2.append(twin_image[1])
+    #     labels.append(1)
 
     # create different labeled pairs
     for label_1, label_2 in zip(random_image_labels_sample_1, random_image_labels_sample_2):
@@ -118,8 +168,10 @@ def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_siz
         images_2 = label_2_images[label_2]
         index_1 = np.random.choice(images_1.shape[0], 1, replace=False)
         index_2 = np.random.choice(images_2.shape[0], 1, replace=False)
-        samples_1.append(images_1[index_1][0].reshape((250**2)) / 255)
-        samples_2.append(images_2[index_2][0].reshape((250**2)) / 255)
+        samples_1.append(images_1[index_1][0] / 255)
+        samples_2.append(images_2[index_2][0] / 255)
+        # samples_1.append(images_1[index_1][0].reshape((250**2)) / 255)
+        # samples_2.append(images_2[index_2][0].reshape((250**2)) / 255)
         if label_1 != label_2:
             labels.append(0)
         else:
@@ -131,13 +183,14 @@ def prepare_paired_x_and_y_data_set(label_2_images: Dict[int, np.ndarray], x_siz
 class LoadDataTests(unittest.TestCase):
 
     data_folder = "Data"
-    all_label_2_images, images, labels = load_data(data_folder)
+    all_label_2_images, labels = load_data(data_folder)
+    images = None  # save memory
 
     def test_all_data_set_analysis(self):
         num_of_classes = len(self.all_label_2_images)
         print("total classes size ", num_of_classes)
         print("total samples size ", self.labels.size)
-        print("every sample is of shape ", self.images[0].shape)
+        print("every sample is of shape ", self.all_label_2_images[0][0].shape)
 
         # plot number of examples per class
         plt.hist(self.labels, num_of_classes)
@@ -187,5 +240,8 @@ class LoadDataTests(unittest.TestCase):
 
     def test_prepare_data_set_for_model(self):
         batch_size = 32
-        X, Y = prepare_paired_x_and_y_data_set(self.all_label_2_images, x_size=batch_size)
-        self.assertEqual(np.sum(Y), batch_size / 2)
+        train, test = split_train_test(self.all_label_2_images, test_ratio=0.4)
+        x, y = prepare_paired_x_and_y_data_set(test, x_size=batch_size)
+        self.assertEqual(x[0].shape[0], 3402)
+        self.assertEqual(x[0].shape[1], 250)
+        self.assertEqual(x[0].shape[2], 250)
