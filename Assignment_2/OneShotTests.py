@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 # from skimage.color import rgb2gray
 import random
+
+from Assignment_2.OneShotModel import OneShotModel
+
 random.seed(51)
 np.random.seed(51)
 
@@ -226,16 +229,16 @@ def prepare_x_y_according_to_description(label_2_images: Dict[str, Dict[int, np.
             words = line.split()
             image1 = label_2_images[words[0]][int(words[1])]
             image2 = label_2_images[words[0]][int(words[2])]
-            samples_1_test.append(image1 / 255)  # Do not flatten for convolution
-            samples_2_test.append(image2 / 255)
+            samples_1_test.append(image1.reshape(250**2) / 255)  # Do not flatten for convolution
+            samples_2_test.append(image2.reshape(250**2) / 255)
             labels_test.append(1)
         for index in range(num_of_samples + 1, 2 * num_of_samples + 1, 1):
             line = train_lines[index]
             words = line.split()
             image1 = label_2_images[words[0]][int(words[1])]
             image2 = label_2_images[words[2]][int(words[3])]
-            samples_1_test.append(image1 / 255)  # Do not flatten for convolution
-            samples_2_test.append(image2 / 255)
+            samples_1_test.append(image1.reshape(250**2) / 255)  # Do not flatten for convolution
+            samples_2_test.append(image2.reshape(250**2) / 255)
             labels_test.append(0)
     return [np.array(samples_1_test), np.array(samples_2_test)], np.array(labels_test)
 
@@ -316,3 +319,28 @@ class LoadDataTests(unittest.TestCase):
         self.assertEqual(x_test[0].shape[0], 2 * 500)
         self.assertEqual(x_test[0].shape[1], 250)
         self.assertEqual(x_test[0].shape[2], 250)
+
+
+class ModelTest(unittest.TestCase):
+
+
+    def test_model(self):
+        all_label_2_images, labels = load_data_2("Data")
+        x_train, y_train = prepare_x_y_according_to_description(all_label_2_images, "pairsDevTrain.txt")
+        # np.save( 'x1.npy', x_train[0] )
+        # np.save( 'x2.npy', x_train[1] )
+        # np.save( 'y.npy' , y_train )
+        # X1 = np.load( 'x1.npy', allow_pickle=True)
+        # X2 = np.load( 'x2.npy', allow_pickle=True)
+        # Y = np.load( 'y.npy', allow_pickle=True)
+        model = OneShotModel()
+        parameters = {
+            'batch_size' : 8 ,
+            'validation_split' : 0.2 ,
+            'epochs' : 9 ,
+            'val_data' : None
+        }
+        h = model.fit(x_train, y_train, parameters)
+        # h = model.fit([X1, X2], Y, parameters)
+        model.plot_metric(h)
+
