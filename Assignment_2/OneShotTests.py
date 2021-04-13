@@ -325,6 +325,8 @@ class ModelTest(unittest.TestCase):
 
 
     def test_model(self):
+        # import tensorflow as tf
+        # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
         all_label_2_images, labels = load_data_2("Data")
         x_train, y_train = prepare_x_y_according_to_description(all_label_2_images, "pairsDevTrain.txt")
         # np.save( 'x1.npy', x_train[0] )
