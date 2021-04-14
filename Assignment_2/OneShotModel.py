@@ -17,16 +17,20 @@ class OneShotModel(object):
             Reshape(input_shape=input_shape, target_shape=convolution_shape),
             Conv2D(32, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
             Conv2D(32, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
+            BatchNormalization(),
             # MaxPooling2D(pool_size=(2, 2), strides=strides),
             MaxPooling2D(pool_size=(2, 2), strides=2),
             Conv2D(64, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
             Conv2D(64, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
+            BatchNormalization(),
             MaxPooling2D(pool_size=(2, 2), strides=2),
             Conv2D(128, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
             Conv2D(128, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.glorot_normal),
+            BatchNormalization(),
             MaxPooling2D(pool_size=(2, 2), strides=2),
             Conv2D(256, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.RandomNormal(stddev=0.01)),
             Conv2D(256, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same", kernel_initializer=initializers.RandomNormal(stddev=0.01)),
+            BatchNormalization(),
             MaxPooling2D(pool_size=(2, 2), strides=2),
             Flatten(),
             Dense(1024, activation=activations.relu, kernel_initializer=initializers.RandomNormal(mean=0, stddev=0.01)),
@@ -62,6 +66,10 @@ class OneShotModel(object):
 
     def predict(self, x):
         predictions = self.__model.predict(x)
+        return predictions
+
+    def evaluate(self, x, y):
+        predictions = self.__model.evaluate(x, y)
         return predictions
 
     # to get a picture of loss progress.
