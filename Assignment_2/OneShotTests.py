@@ -323,21 +323,20 @@ class LoadDataTests(unittest.TestCase):
 
 class ModelTest(unittest.TestCase):
 
-
     def test_model(self):
         # import tensorflow as tf
         # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
         all_label_2_images, labels = load_data_2("Data")
         x_train, y_train = prepare_x_y_according_to_description(all_label_2_images, "pairsDevTrain.txt")
-        # np.save( 'x1.npy', x_train[0] )
-        # np.save( 'x2.npy', x_train[1] )
-        # np.save( 'y.npy' , y_train )
+        # np.save( 'x1.npy', x_train[0], fix_imports=False )
+        # np.save( 'x2.npy', x_train[1], fix_imports=False )
+        # np.save( 'y.npy' , y_train, fix_imports=False )
         # X1 = np.load( 'x1.npy', allow_pickle=True)
         # X2 = np.load( 'x2.npy', allow_pickle=True)
         # Y = np.load( 'y.npy', allow_pickle=True)
         model = OneShotModel()
         parameters = {
-            'batch_size' : 8 ,
+            'batch_size' : 5 ,
             'validation_split' : 0.2 ,
             'epochs' : 9 ,
             'val_data' : None
@@ -346,3 +345,6 @@ class ModelTest(unittest.TestCase):
         # h = model.fit([X1, X2], Y, parameters)
         model.plot_metric(h)
 
+    def TestFetchData(self):
+        from sklearn.datasets import fetch_lfw_pairs
+        fetch_lfw_pairs()

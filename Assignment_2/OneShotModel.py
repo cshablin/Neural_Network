@@ -62,15 +62,19 @@ class OneShotModel(object):
         seq_conv_model = [
 
             Reshape(input_shape=input_shape, target_shape=convolution_shape),
-            Conv2D(32, kernel_size=(3, 3), strides=strides, activation=activations.relu),
-            MaxPooling2D(pool_size=(2, 2), strides=strides),
-            Conv2D(32, kernel_size=(3, 3), strides=strides, activation=activations.relu),
-            MaxPooling2D(pool_size=(2, 2), strides=strides),
-            Conv2D(64, kernel_size=(3, 3), strides=strides, activation=activations.relu),
-            MaxPooling2D(pool_size=(2, 2), strides=strides),
-            Conv2D(64, kernel_size=(3, 3), strides=strides, activation=activations.relu),
+            Conv2D(32, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same"),
+            Conv2D(32, kernel_size=(3, 3), strides=1, activation=activations.relu, padding="same"),
+            # MaxPooling2D(pool_size=(2, 2), strides=strides),
+            MaxPooling2D(pool_size=(2, 2), strides=2),
+            Conv2D(64, kernel_size=(3, 3), strides=1, activation=activations.relu),
+            Conv2D(64, kernel_size=(3, 3), strides=1, activation=activations.relu),
+            MaxPooling2D(pool_size=(2, 2), strides=2),
+            Conv2D(128, kernel_size=(3, 3), strides=1, activation=activations.relu),
+            Conv2D(128, kernel_size=(3, 3), strides=1, activation=activations.relu),
+            MaxPooling2D(pool_size=(2, 2), strides=2),
             Flatten(),
-            Dense(64, activation=activations.sigmoid)
+            Dense(1024, activation=activations.sigmoid),
+            Dense(1024, activation=activations.sigmoid)
         ]
 
         seq_model = tf.keras.Sequential(seq_conv_model)
