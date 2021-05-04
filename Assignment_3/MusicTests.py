@@ -90,6 +90,7 @@ class MusicTestCase(unittest.TestCase):
         df = load_lyrics(path)
         songs = []
         for song in list(df['lyrics']):
+            song += " EOF"
             modified_song = re.sub(r"\([^()]*\)", "", song)
             # modified_song = re.sub(r"\[[^()]*\]", "", modified_song)
             # for ch in ["[", "]", "chorus"]:

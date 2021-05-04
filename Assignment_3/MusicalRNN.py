@@ -37,6 +37,7 @@ class LyricsGenerator(object):
                                  verbose=2, validation_split=hyper_parameters['validation_split'],
                                  validation_data=None)
         self.model.summary()
+        self.model.save('lyrics_model.h5')
         return history
 
     def _lr_scheduler(self, epoch, lr):
