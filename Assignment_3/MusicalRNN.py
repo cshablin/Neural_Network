@@ -1,46 +1,67 @@
 import spacy
+import numpy as np
 from gensim.models import KeyedVectors, word2vec
+from keras import initializers, callbacks
+from keras.callbacks import History
 from keras.layers.recurrent import LSTM
 from keras.layers.embeddings import Embedding
 from keras.models import Sequential
-from keras.layers import Dense, Activation
+from keras.layers import Dense, Activation, Dropout
 
 
 class LyricsGenerator(object):
 
-    def __init__(self):
-        # TODO: first time run in terminal python -m spacy download en_core_web_sm
-        self.nlp = spacy.load('en_core_web_sm')
-        model = Sequential()
-        # model.add(Embedding(input_dim=vocab_size, output_dim=emdedding_size,
-        #                     weights=[pretrained_weights]))
-        # model.add(LSTM(units=emdedding_size))
-        # model.add(Dense(units=vocab_size))
-        # model.add(Activation('softmax'))
-        # model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+    def __init__(self, embedding_dim: int, vocab_size: int, input_size: int, embedding_matrix: np.ndarray):
+        embedding_layer = Embedding(
+            vocab_size,
+            embedding_dim,
+            input_length=input_size,
+            weights=[embedding_matrix],
+            # embeddings_initializer=initializers.Constant(embedding_matrix),
+            trainable=False,
+        )
 
+        # model = Sequential()
+        # model.add(Embedding(total_words , 10 , input_length = max_sequence_len - 1))
+        # model.add(LSTM(100))
+        # model.add(Dropout(0.2))
+        # model.add(Dense(total_words , activation = 'softmax'))
+        # model.compile(optimizer = 'adam' , loss = 'categorical_crossentropy')
+
+        self.model = Sequential()
+        self.model.add(embedding_layer)
+        self.model.add(LSTM(units=embedding_dim))
+        # self.model.add(Dropout(0.2))
+        self.model.add(Dense(units=vocab_size, activation='softmax'))
+        # self.model.add(Activation('softmax'))
+        self.model.compile(optimizer='adam', loss='categorical_crossentropy')
 
     def fit(self, x, y, hyper_parameters):
-        pass
+        callback = callbacks.EarlyStopping(monitor='loss', patience=3)
+        callback2 = callbacks.LearningRateScheduler(self._lr_scheduler)
+        callback3 = callbacks.ModelCheckpoint('model.h5', save_best_only=True, monitor='val_loss', mode='min')
+        # callback = callbacks.EarlyStopping(monitor='val_accuracy', mode='max', min_delta=1)
+        history = self.model.fit(x, y, epochs=100, verbose=1)
+        # history = self.model.fit(x, y, batch_size=hyper_parameters['batch_size'], epochs=hyper_parameters['epochs'],
+        #                          callbacks=[callback, callback2, callback3],
+        #                          verbose=2, validation_split=hyper_parameters['validation_split'],
+        #                          validation_data=None)
+        self.model.summary()
+        return history
 
-    def embedding_word2vec(self, word):
-        # Load vectors directly from the file
-        model = KeyedVectors.load_word2vec_format('data/GoogleGoogleNews-vectors-negative300.bin', binary=True)
-        model = KeyedVectors.load_word2vec_format('C:\\Users\\cshablin\\Downloads\\GoogleNews-vectors-negative300.bin.gz', binary=True)
-        # Access vectors for specific words with a keyed lookup:
-        vector = model[word]
-        # see the shape of the vector (300,)
-        print(vector.shape)
-        return vector
-        # Processing sentences is not as simple as with Spacy:
-        # vectors = [model[x] for x in "This is some text I am processing with Spacy".split(' ')]
+    def _lr_scheduler(self, epoch, lr):
+        return 0.99 * lr
 
-    def embedding_spacy(self, word):
-
-        # process a sentence using the model
-        doc = self.nlp("This is some text that I am processing with Spacy")
-        # It's that simple - all of the vectors and words are assigned after this point
-        # Get the vector for 'text':
-        print(doc[3].vector)
-        # Get the mean vector for the entire sentence (useful for sentence classification etc.)
-        print(doc.vector)
+    # to get a picture of loss progress.
+    def plot_metric(self, history: History, metric: str = 'loss') -> None:
+        import matplotlib.pyplot as plt
+        train_metrics = history.history[metric]
+        val_metrics = history.history['val_'+metric]
+        epochs = range(1, len(train_metrics) + 1)
+        plt.plot(epochs, train_metrics)
+        plt.plot(epochs, val_metrics)
+        plt.title('Training and validation '+ metric)
+        plt.xlabel("Epochs")
+        plt.ylabel(metric)
+        plt.legend(["train_"+metric, 'val_'+metric])
+        plt.show()

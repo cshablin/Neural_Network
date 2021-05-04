@@ -1,6 +1,6 @@
 import string
 import unittest
-from typing import List
+from typing import List, Tuple
 import re
 
 import numpy as np
@@ -33,24 +33,19 @@ class MusicTestCase(unittest.TestCase):
         embedding_dim = 300
         embedding_matrix = self.prepare_embeddings(embedding_dim, tokenize, total_words)
 
-        self.create_x_y_train(songs, tokenize)
+        x_train, y_train = self.create_x_y_train(songs, tokenize, total_words)
 
-        embedding_layer = Embedding(
-            total_words,
-            embedding_dim,
-            embeddings_initializer=initializers.Constant(embedding_matrix),
-            trainable=False,
-        )
+        parameters = {
+            'batch_size' : 8 ,
+            'validation_split' : 0.2 ,
+            'epochs' : 15 ,
+            'val_data' : None
+        }
+        lyrics_generator = LyricsGenerator(embedding_dim, total_words, x_train.shape[1], embedding_matrix)
+        h = lyrics_generator.fit(x_train, y_train, parameters)
+        lyrics_generator.plot_metric(h)
 
-        model = Sequential()
-        model.add(embedding_layer)
-        model.add(LSTM(units=embedding_dim))
-        model.add(Dense(units=total_words))
-        model.add(Activation('softmax'))
-        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
-        t = 1
-
-    def create_x_y_train(self, songs, tokenize):
+    def create_x_y_train(self, songs, tokenize, total_words) -> Tuple[np.ndarray, np.ndarray]:
         input_sequences = []
         for line in songs:
             token_list = tokenize.texts_to_sequences([line])[0]
@@ -58,11 +53,12 @@ class MusicTestCase(unittest.TestCase):
                 n_gram_sequence = token_list[:i + 1]
                 input_sequences.append(n_gram_sequence)
         print(input_sequences[:10])
-        # max_sequence_len = max([len(x) for x in input_sequences])
-        # input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
-        # x_train = input_sequences[:, :-1]
-        # y_train = input_sequences[:, -1]
-        # y_train = utils.to_categorical(y_train, num_classes=total_words)
+        max_sequence_len = max([len(x) for x in input_sequences])
+        input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+        x_train = input_sequences[:, :-1]
+        y_train = input_sequences[:, -1]
+        y_train = utils.to_categorical(y_train, num_classes=total_words)
+        return x_train, y_train
 
     def prepare_embeddings(self, embedding_dim, tokenize, total_words):
         # Prepare embedding matrix
