@@ -1,5 +1,7 @@
+import string
 import unittest
 from typing import List
+import re
 
 import numpy as np
 import gensim.downloader
@@ -39,26 +41,30 @@ class MusicTestCase(unittest.TestCase):
 
         max_sequence_len = max([len(x) for x in input_sequences])
         input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
-        x_train = input_sequences[:, :-1]
-        y_train = input_sequences[:, -1]
-        y_train = utils.to_categorical(y_train, num_classes=total_words)
+        # x_train = input_sequences[:, :-1]
+        # y_train = input_sequences[:, -1]
+        # y_train = utils.to_categorical(y_train, num_classes=total_words)
 
         embedding_dim = 300
         hits = 0
         misses = 0
 
         # Prepare embedding matrix
+        non_existing_words_distribution_mu = -0.9
+        missing_words = 1000
+        delta_mu = 0.9 * 2 / missing_words
         embedding_matrix = np.zeros((total_words, embedding_dim))
         for word, i in tokenize.word_index.items():
-            # TODO: the model is missing word 'to'
-            embedding_vector = model[word]
-            if embedding_vector is not None:
-                # Words not found in embedding index will be all-zeros.
-                # This includes the representation for "padding" and "OOV"
+            try:
+                embedding_vector = model[word]
                 embedding_matrix[i] = embedding_vector
                 hits += 1
-            else:
+            except KeyError as e:
+                # Words not found in embedding index will be sampled from N(mu,0.01)
+                embedding_matrix[i] = np.random.normal(non_existing_words_distribution_mu, delta_mu / 10, embedding_dim)
+                non_existing_words_distribution_mu += delta_mu
                 misses += 1
+
         print("Converted %d words (%d misses)" % (hits, misses))
 
         embedding_layer = Embedding(
@@ -79,7 +85,15 @@ class MusicTestCase(unittest.TestCase):
         df = load_lyrics(path)
         songs = []
         for song in list(df['lyrics']):
-            songs.append(song.replace("&", "silencio").lower())
+            modified_song = re.sub(r"\([^()]*\)", "", song)
+            # modified_song = re.sub(r"\[[^()]*\]", "", modified_song)
+            # for ch in ["[", "]", "chorus"]:
+            #     modified_song = modified_song.replace(ch, "")
+            modified_song = modified_song.replace("chorus", "").replace("&", "silencio").lower()
+            # modified_song = modified_song.replace("&", "silencio").lower()
+            regex = re.compile('[%s]' % re.escape(string.punctuation))
+            modified_song = regex.sub('', modified_song)
+            songs.append(modified_song)
 
         return songs
 
