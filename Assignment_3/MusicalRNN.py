@@ -1,12 +1,10 @@
-import spacy
 import numpy as np
-from gensim.models import KeyedVectors, word2vec
-from keras import initializers, callbacks
+from keras import callbacks
 from keras.callbacks import History
 from keras.layers.recurrent import LSTM
 from keras.layers.embeddings import Embedding
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Dropout
+from keras.layers import Dense, Dropout
 
 
 class LyricsGenerator(object):
@@ -21,19 +19,11 @@ class LyricsGenerator(object):
             trainable=False,
         )
 
-        # model = Sequential()
-        # model.add(Embedding(total_words , 10 , input_length = max_sequence_len - 1))
-        # model.add(LSTM(100))
-        # model.add(Dropout(0.2))
-        # model.add(Dense(total_words , activation = 'softmax'))
-        # model.compile(optimizer = 'adam' , loss = 'categorical_crossentropy')
-
         self.model = Sequential()
         self.model.add(embedding_layer)
         self.model.add(LSTM(units=embedding_dim))
-        # self.model.add(Dropout(0.2))
+        self.model.add(Dropout(0.2))
         self.model.add(Dense(units=vocab_size, activation='softmax'))
-        # self.model.add(Activation('softmax'))
         self.model.compile(optimizer='adam', loss='categorical_crossentropy')
 
     def fit(self, x, y, hyper_parameters):
@@ -41,11 +31,11 @@ class LyricsGenerator(object):
         callback2 = callbacks.LearningRateScheduler(self._lr_scheduler)
         callback3 = callbacks.ModelCheckpoint('model.h5', save_best_only=True, monitor='val_loss', mode='min')
         # callback = callbacks.EarlyStopping(monitor='val_accuracy', mode='max', min_delta=1)
-        history = self.model.fit(x, y, epochs=100, verbose=1)
-        # history = self.model.fit(x, y, batch_size=hyper_parameters['batch_size'], epochs=hyper_parameters['epochs'],
-        #                          callbacks=[callback, callback2, callback3],
-        #                          verbose=2, validation_split=hyper_parameters['validation_split'],
-        #                          validation_data=None)
+        # history = self.model.fit(x, y, epochs=100, verbose=1)
+        history = self.model.fit(x, y, batch_size=hyper_parameters['batch_size'], epochs=hyper_parameters['epochs'],
+                                 callbacks=[callback, callback2, callback3],
+                                 verbose=2, validation_split=hyper_parameters['validation_split'],
+                                 validation_data=None)
         self.model.summary()
         return history
 
