@@ -24,48 +24,16 @@ class MusicTestCase(unittest.TestCase):
 
     def test_word_embedding(self):
         songs = self.__load_songs("Lyrics\\lyrics_train_set.csv")
-        model = KeyedVectors.load_word2vec_format('C:\\Users\\cshablin\\Downloads\\GoogleNews-vectors-negative300.bin', binary=True)
 
         # Data preprocessing
         tokenize = Tokenizer()
         tokenize.fit_on_texts(songs)
         total_words = len(tokenize.word_index) + 1
 
-        input_sequences = []
-        for line in songs:
-            token_list = tokenize.texts_to_sequences([line])[0]
-            for i in range(1, len(token_list)):
-                n_gram_sequence = token_list[:i+1]
-                input_sequences.append(n_gram_sequence)
-        print(input_sequences[:10])
-
-        max_sequence_len = max([len(x) for x in input_sequences])
-        input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
-        # x_train = input_sequences[:, :-1]
-        # y_train = input_sequences[:, -1]
-        # y_train = utils.to_categorical(y_train, num_classes=total_words)
-
         embedding_dim = 300
-        hits = 0
-        misses = 0
+        embedding_matrix = self.prepare_embeddings(embedding_dim, tokenize, total_words)
 
-        # Prepare embedding matrix
-        non_existing_words_distribution_mu = -0.9
-        missing_words = 1000
-        delta_mu = 0.9 * 2 / missing_words
-        embedding_matrix = np.zeros((total_words, embedding_dim))
-        for word, i in tokenize.word_index.items():
-            try:
-                embedding_vector = model[word]
-                embedding_matrix[i] = embedding_vector
-                hits += 1
-            except KeyError as e:
-                # Words not found in embedding index will be sampled from N(mu,0.01)
-                embedding_matrix[i] = np.random.normal(non_existing_words_distribution_mu, delta_mu / 10, embedding_dim)
-                non_existing_words_distribution_mu += delta_mu
-                misses += 1
-
-        print("Converted %d words (%d misses)" % (hits, misses))
+        self.create_x_y_train(songs, tokenize)
 
         embedding_layer = Embedding(
             total_words,
@@ -80,6 +48,47 @@ class MusicTestCase(unittest.TestCase):
         model.add(Dense(units=total_words))
         model.add(Activation('softmax'))
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+        t = 1
+
+    def create_x_y_train(self, songs, tokenize):
+        input_sequences = []
+        for line in songs:
+            token_list = tokenize.texts_to_sequences([line])[0]
+            for i in range(1, len(token_list)):
+                n_gram_sequence = token_list[:i + 1]
+                input_sequences.append(n_gram_sequence)
+        print(input_sequences[:10])
+        # max_sequence_len = max([len(x) for x in input_sequences])
+        # input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+        # x_train = input_sequences[:, :-1]
+        # y_train = input_sequences[:, -1]
+        # y_train = utils.to_categorical(y_train, num_classes=total_words)
+
+    def prepare_embeddings(self, embedding_dim, tokenize, total_words):
+        # Prepare embedding matrix
+
+        embedding_matrix = np.load("Lyrics\\embedding_matrix.npy")
+        # hits = 0
+        # misses = 0
+        # model = KeyedVectors.load_word2vec_format('C:\\Users\\cshablin\\Downloads\\GoogleNews-vectors-negative300.bin',
+        #                                           binary=True)
+        # non_existing_words_distribution_mu = -0.9
+        # missing_words = 1000
+        # delta_mu = 0.9 * 2 / missing_words
+        # embedding_matrix = np.zeros((total_words, embedding_dim))
+        # for word, i in tokenize.word_index.items():
+        #     try:
+        #         embedding_vector = model[word]
+        #         embedding_matrix[i] = embedding_vector
+        #         hits += 1
+        #     except KeyError as e:
+        #         # Words not found in embedding index will be sampled from N(mu,0.01)
+        #         embedding_matrix[i] = np.random.normal(non_existing_words_distribution_mu, delta_mu / 10, embedding_dim)
+        #         non_existing_words_distribution_mu += delta_mu
+        #         misses += 1
+        # print("Converted %d words (%d misses)" % (hits, misses))
+        # np.save("Lyrics\\embedding_matrix.npy", embedding_matrix)
+        return embedding_matrix
 
     def __load_songs(self, path) -> List[str]:
         df = load_lyrics(path)
