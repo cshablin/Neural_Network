@@ -96,7 +96,6 @@ class MusicTestCase(unittest.TestCase):
         # os.chmod("Lyrics\\non_words.json", 0o644)
         return cleaned_songs, embedding_matrix
 
-
     def create_x_y_train(self, songs, tokenize, total_words) -> Tuple[np.ndarray, np.ndarray]:
         input_sequences = []
         for line in songs:
@@ -106,7 +105,8 @@ class MusicTestCase(unittest.TestCase):
                 input_sequences.append(n_gram_sequence)
         print(input_sequences[:10])
         max_sequence_len = max([len(x) for x in input_sequences])
-        input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+        # input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+        input_sequences = np.array(pad_sequences(input_sequences, maxlen=100, padding='pre'))
         x_train = input_sequences[:, :-1]
         y_train = input_sequences[:, -1]
         y_train = utils.to_categorical(y_train, num_classes=total_words)
