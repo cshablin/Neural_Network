@@ -1,4 +1,5 @@
 import os
+import random
 import string
 import unittest
 from typing import List, Tuple
@@ -96,7 +97,29 @@ class MusicTestCase(unittest.TestCase):
         # os.chmod("Lyrics\\non_words.json", 0o644)
         return cleaned_songs, embedding_matrix
 
-    def create_x_y_train(self, songs, tokenize, total_words) -> Tuple[np.ndarray, np.ndarray]:
+    def create_x_y_train(self, songs, tokenize, total_words) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        input_sequences = []
+        random.shuffle(songs)
+
+        train_songs = songs[:120]
+        val_songs = songs[120:]
+        # for line in songs:
+        #     token_list = tokenize.texts_to_sequences([line])[0]
+        #     for i in range(1, len(token_list)):
+        #         n_gram_sequence = token_list[:i + 1]
+        #         input_sequences.append(n_gram_sequence)
+        # print(input_sequences[:10])
+        # max_sequence_len = max([len(x) for x in input_sequences])
+        # # input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
+        # input_sequences = np.array(pad_sequences(input_sequences, maxlen=100, padding='pre'))
+        # x_train = input_sequences[:, :-1]
+        # y_train = input_sequences[:, -1]
+        # y_train = utils.to_categorical(y_train, num_classes=total_words)
+        x_t, y_t = self.create_x_y(train_songs, tokenize, total_words)
+        x_v, y_v = self.create_x_y(val_songs, tokenize, total_words)
+        return x_t, y_t, x_v, y_v
+
+    def create_x_y(self, songs, tokenize, total_words) -> Tuple[np.ndarray, np.ndarray]:
         input_sequences = []
         for line in songs:
             token_list = tokenize.texts_to_sequences([line])[0]
