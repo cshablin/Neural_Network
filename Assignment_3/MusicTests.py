@@ -27,6 +27,7 @@ class MusicTestCase(unittest.TestCase):
 
     def test_word_embedding(self):
         songs = self.__load_songs("Lyrics\\lyrics_train_set.csv")
+        test_songs = self.__load_songs("Lyrics\\lyrics_test_set.csv", pop_305=False)
 
 
         # Data preprocessing
@@ -36,11 +37,13 @@ class MusicTestCase(unittest.TestCase):
 
         embedding_dim = 300
         cleaned_songs, embedding_matrix = self.prepare_embeddings_2(songs, embedding_dim, tokenize)
+        cleaned_test_songs, _ = self.prepare_embeddings_2(test_songs, embedding_dim, tokenize)
 
 
         # embedding_matrix = self.prepare_embeddings(embedding_dim, tokenize, total_words)
 
-        x_train, y_train = self.create_x_y_train(cleaned_songs, tokenize, total_words)
+        x_train, y_train, x_v, y_v = self.create_x_y_train(cleaned_songs, tokenize, total_words)
+        x_test, y_test = self.create_x_y(cleaned_test_songs, tokenize, total_words)
 
         parameters = {
             'batch_size' : 8 ,
@@ -129,7 +132,7 @@ class MusicTestCase(unittest.TestCase):
         print(input_sequences[:10])
         max_sequence_len = max([len(x) for x in input_sequences])
         # input_sequences = np.array(pad_sequences(input_sequences, maxlen=max_sequence_len, padding='pre'))
-        input_sequences = np.array(pad_sequences(input_sequences, maxlen=100, padding='pre'))
+        input_sequences = np.array(pad_sequences(input_sequences, maxlen=10, padding='pre'))
         x_train = input_sequences[:, :-1]
         y_train = input_sequences[:, -1]
         y_train = utils.to_categorical(y_train, num_classes=total_words)
@@ -161,7 +164,7 @@ class MusicTestCase(unittest.TestCase):
         # np.save("Lyrics\\embedding_matrix.npy", embedding_matrix)
         return embedding_matrix
 
-    def __load_songs(self, path) -> List[str]:
+    def __load_songs(self, path, pop_305=True) -> List[str]:
         df = load_lyrics(path)
         songs = []
         for song in list(df['lyrics']):
@@ -174,8 +177,8 @@ class MusicTestCase(unittest.TestCase):
             regex = re.compile('[%s]' % re.escape(string.punctuation))
             modified_song = regex.sub('', modified_song)
             songs.append(modified_song)
-
-        songs.pop(305)
+        if pop_305:
+            songs.pop(305)
         return songs
 
     def remove(self, words: List[str], songs):
