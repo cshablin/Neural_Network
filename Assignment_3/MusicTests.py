@@ -7,19 +7,20 @@ import re
 import json
 
 import numpy as np
-import gensim.downloader
-from gensim.models import KeyedVectors
-from keras.layers import Embedding, LSTM, Dense, Activation
+# import gensim.downloader
+# from gensim.models import KeyedVectors
+# from keras.layers import Embedding, LSTM, Dense, Activation
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras import initializers, Sequential
 from keras import utils
 
-from Assignment_3.DataLoad import load_lyrics
-from Assignment_3.MusicalRNN import LyricsGenerator
+from Assignment_3.DataLoad import *
+from Assignment_3.Midi import load_midi
+from Assignment_3.MusicalRNN import LyricsGenerator, LyricsGeneratorLateFusion
 
 
-class MusicTestCase(unittest.TestCase):
+class MusicModelOneTestCase(unittest.TestCase):
 
     def test_load_lyrics(self):
         result = load_lyrics("Lyrics\\lyrics_train_set.csv")
@@ -190,6 +191,70 @@ class MusicTestCase(unittest.TestCase):
             resulting_songs.append(result)
         return resulting_songs
 
+
+class MusicModelTwoTestCase(unittest.TestCase):
+
+    def test_late_fusion_model(self):
+        df_songs = load_songs('Lyrics\\lyrics_train_set.csv')
+        # df_midi = load_midi("MIDI\\")
+        df_midi = load_midi("temp_dir\\midi_files\\")
+        df_songs['filename'] = df_songs['artist'].str.replace(' ', "_") + "_-_" + df_songs['title'].str.replace(' ', "_") + ".mid"
+        df_merged = pd.merge(df_songs, df_midi, on="filename")
+        tokenize = Tokenizer(filters='')
+        tokenize.fit_on_texts(df_merged['lyrics'])
+        total_words = len(tokenize.word_index) + 1
+        embedding_dim = 300
+        embedding_matrixs = np.load('Lyrics\\embedding_matrix_6b.npy')
+
+
+        non_words_dict = json.load(open("Lyrics\\non_words.json", "r"))
+        non_words_list = non_words_dict["non existing words"]
+        df_merged['lyrics'] = remove_words(non_words_list, df_merged['lyrics'])
+
+        max_sequence_len = 8
+        df_train, df_val = split_df_to_train_val(df_merged, ratio=0.9)
+        x_train, x_train_midi, y_train = create_x_y(df_train, tokenize, total_words, max_sequence_len)
+        x_val, x_val_midi, y_val = create_x_y(df_val, tokenize, total_words, max_sequence_len)
+        x_train_midi = np.asarray(x_train_midi).astype('float32')
+        x_val_midi = np.asarray(x_val_midi).astype('float32')
+
+        np.broadcast_to()
+
+        # Train model
+        parameters = {
+            'batch_size' : 128 ,
+            'validation_split' : None ,
+            'epochs' : 7 ,
+            'val_data' :  ([x_val, x_val_midi], y_val)
+        }
+        lyrics_generator = LyricsGeneratorLateFusion(embedding_dim, total_words, x_train.shape[1], x_train_midi.shape[1], embedding_matrixs)
+        # increasing dimension to match Embedding layer output dimension
+        x_train_midi = np.repeat(x_train_midi[:, np.newaxis, :], x_train.shape[1], axis=1)
+
+        h = lyrics_generator.fit([x_train, x_train_midi], y_train, parameters)
+        lyrics_generator.plot_metric(h)
+        lyrics_generator.plot_metric(h, metric="accuracy")
+
+    def test_increase_dimensions_by_replicate(self):
+        a = np.array([[1, 2, 3], [4, 5, 6]])
+        print(a.shape)
+        # (2,  2)
+
+        # indexing with np.newaxis inserts a new 3rd dimension, which we then repeat the
+        # array along, (you can achieve the same effect by indexing with None, see below)
+        # b = np.repeat(a[:, :, np.newaxis], 5, axis=2)
+        b = np.repeat(a[:, np.newaxis, :], 5, axis=1)
+
+    def test_duplicate_rows(self):
+        a = np.array([1, 2, 3])
+        print(a.shape)
+        b = np.repeat(a[np.newaxis, :], 5, axis=0)
+
+        # indexing with np.newaxis inserts a new 3rd dimension, which we then repeat the
+        # array along, (you can achieve the same effect by indexing with None, see below)
+        # b = np.repeat(a[:, :, np.newaxis], 5, axis=2)
+        b = np.repeat(a, 5, axis=0)
+        print(b.shape)
 
 
 if __name__ == '__main__':
