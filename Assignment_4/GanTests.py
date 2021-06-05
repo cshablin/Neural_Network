@@ -41,6 +41,9 @@ class DiabetesTestCase(unittest.TestCase):
         diab_df = self.scaler(diab_df)
         print(diab_df.describe())
 
+    def test_summery_gan(self):
+        gan = GAN()
+
     def test_train_gan(self):
         # plot the model
         diab_df = self.load_data()

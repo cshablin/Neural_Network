@@ -6,7 +6,7 @@ from keras.callbacks import History
 
 class GAN:
     def __init__(self):
-        self.latent_dim = 100
+        self.latent_dim = 10
         self.generator_vector_size = 8
         self.discriminator_input_shape = (self.generator_vector_size,)
         self.num_examples_to_generate = 16
@@ -28,12 +28,12 @@ class GAN:
 
     def make_generator_model(self):
         model = tf.keras.Sequential()
-        model.add(layers.Dense(64, use_bias=True, input_dim=self.latent_dim))
-        # model.add(layers.BatchNormalization())
+        model.add(layers.Dense(30, use_bias=True, input_dim=self.latent_dim))
+        model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
 
-        model.add(layers.Dense(32))
-        # model.add(layers.BatchNormalization())
+        model.add(layers.Dense(15))
+        model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
         model.add(layers.Dense(self.generator_vector_size, activation='tanh'))
 
