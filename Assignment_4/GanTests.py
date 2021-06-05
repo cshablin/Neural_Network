@@ -1,4 +1,6 @@
 import unittest
+from typing import List
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -51,9 +53,41 @@ class DiabetesTestCase(unittest.TestCase):
         del diab_df['class']
         diab_df = self.scaler(diab_df)
         gan = GAN()
-        (d_losses, d_accuracies, g_losses, g_accuracies) = gan.train(df=diab_df, epochs=500, batch_size=16)
+        d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies = gan.train(df=diab_df, epochs=500, batch_size=16)
         self.show_plot(d_losses, 'd_losses')
         self.show_plot(d_accuracies,'d_accuracies')
         self.show_plot(g_losses, 'g_losses')
         self.show_plot(g_accuracies, 'g_accuracies')
+
+        self.plot_metric(d_losses, d_fake_accuracies, d_real_accuracies)
+
+        # Test Discriminator on real  data
+        X_train = diab_df.values
+        y_real = np.ones((X_train.shape[0], 1))
+        _, acc_real = gan.discriminator.evaluate(X_train, y_real, verbose=1)
+        print('Evaluate real ', acc_real)
+
         #plot_model(model, to_file='generator_plot.png', show_shapes=True, show_layer_names=True)
+
+    def plot_metric(self, d_losses: np.ndarray, d_fake_accuracies: np.ndarray, d_real_accuracies: np.ndarray) -> None:
+        import matplotlib.pyplot as plt
+
+        epochs = range(1, d_losses.shape[0] + 1)
+        plt.plot(epochs, d_losses)
+        plt.plot(epochs, d_fake_accuracies)
+        plt.plot(epochs, d_real_accuracies)
+        plt.title('Gan')
+        plt.xlabel("Epochs")
+        plt.legend(['d_loss', 'd_fake_accuracies', 'd_real_accuracies'])
+        plt.show()
+
+    def plot_metric_general(self, graphs: List[np.ndarray], labels: List[str]) -> None:
+        import matplotlib.pyplot as plt
+        epochs = range(1, graphs[0].shape[0] + 1)
+        plt.xlabel("Epochs")
+        plt.title('Gan')
+        for i in range(len(labels)):
+            plt.plot(epochs, graphs[i])
+        plt.legend(labels)
+        plt.show()
+

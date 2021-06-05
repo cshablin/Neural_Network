@@ -74,9 +74,14 @@ class GAN:
         # X_train = np.expand_dims(X_train, axis=3)
         X_train = df.values
         valid = np.ones((batch_size, 1))
+        valid_twice = np.ones((batch_size * 2, 1))
         fake = np.zeros((batch_size, 1))
         d_losses = np.zeros((epochs, 1))
         d_accuracies = np.zeros((epochs, 1))
+        d_fake_losses = np.zeros((epochs, 1))
+        d_fake_accuracies = np.zeros((epochs, 1))
+        d_real_losses = np.zeros((epochs, 1))
+        d_real_accuracies = np.zeros((epochs, 1))
         g_losses = np.zeros((epochs, 1))
         g_accuracies = np.zeros((epochs, 1))
 
@@ -90,10 +95,15 @@ class GAN:
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
             d_acc = 0.5 * np.add(d_acc_real, d_acc_fake)
 
-            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
+            d_fake_losses[i] = d_loss_fake
+            d_real_losses[i] = d_loss_real
+            d_fake_accuracies[i] = d_acc_fake
+            d_real_accuracies[i] = d_acc_real
+
+            noise = np.random.normal(0, 1, (batch_size * 2, self.latent_dim))
             # create inverted labels for the fake samples so generator can improve to be 'real'
             # update the generator via the discriminator's error
-            g_loss, g_acc = self.gan.train_on_batch(noise, valid)
+            g_loss, g_acc = self.gan.train_on_batch(noise, valid_twice)
 
             d_losses[i] = d_loss
             d_accuracies[i] = d_acc
@@ -104,7 +114,7 @@ class GAN:
             #   noise = np.random.normal(0, 1, (1, self.noise_dim))
             #   gen_rows = self.generator.predict(noise)
             #   print(gen_rows)
-        return d_losses, d_accuracies, g_losses, g_accuracies
+        return d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies
 
     def plot_metric(self, history: History, metric: str = 'loss') -> None:
         import matplotlib.pyplot as plt
