@@ -84,17 +84,21 @@ class GAN:
             rows = X_train[idx]
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
             gen_rows = self.generator.predict(noise)
-            d_loss_real = self.discriminator.train_on_batch(rows, valid)
-            d_loss_fake = self.discriminator.train_on_batch(gen_rows, fake)
+            d_loss_real, d_acc_real = self.discriminator.train_on_batch(rows, valid)
+            d_loss_fake, d_acc_fake = self.discriminator.train_on_batch(gen_rows, fake)
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+            d_acc = 0.5 * np.add(d_acc_real, d_acc_fake)
 
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-            g_loss = self.gan.train_on_batch(noise, valid)
+            # create inverted labels for the fake samples so generator can improve to be 'real'
+            # update the generator via the discriminator's error
+            g_loss, g_acc = self.gan.train_on_batch(noise, valid)
 
-            d_losses[i] = d_loss[0]
-            d_accuracies[i] = d_loss[1]
+            d_losses[i] = d_loss
+            d_accuracies[i] = d_acc
             g_losses[i] = g_loss
-            print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss))
+            # g_accuracies[i] = g_acc
+            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss, 100 * d_acc, g_loss))
             # if epoch % 10 == 0:
             #   noise = np.random.normal(0, 1, (1, self.noise_dim))
             #   gen_rows = self.generator.predict(noise)
