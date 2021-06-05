@@ -29,11 +29,11 @@ class GAN:
     def make_generator_model(self):
         model = tf.keras.Sequential()
         model.add(layers.Dense(64, use_bias=True, input_dim=self.latent_dim))
-        model.add(layers.BatchNormalization())
+        # model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
 
         model.add(layers.Dense(32))
-        model.add(layers.BatchNormalization())
+        # model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
         model.add(layers.Dense(self.generator_vector_size, activation='tanh'))
 
@@ -78,6 +78,7 @@ class GAN:
         d_losses = np.zeros((epochs, 1))
         d_accuracies = np.zeros((epochs, 1))
         g_losses = np.zeros((epochs, 1))
+        g_accuracies = np.zeros((epochs, 1))
 
         for i, epoch in enumerate(range(epochs)):
             idx = np.random.randint(0, X_train.shape[0], batch_size)
@@ -97,13 +98,13 @@ class GAN:
             d_losses[i] = d_loss
             d_accuracies[i] = d_acc
             g_losses[i] = g_loss
-            # g_accuracies[i] = g_acc
-            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss, 100 * d_acc, g_loss))
+            g_accuracies[i] = g_acc
+            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f, acc.: %.2f%%]" % (epoch, d_loss, 100 * d_acc, g_loss, g_acc))
             # if epoch % 10 == 0:
             #   noise = np.random.normal(0, 1, (1, self.noise_dim))
             #   gen_rows = self.generator.predict(noise)
             #   print(gen_rows)
-        return d_losses, d_accuracies, g_losses
+        return d_losses, d_accuracies, g_losses, g_accuracies
 
     def plot_metric(self, history: History, metric: str = 'loss') -> None:
         import matplotlib.pyplot as plt

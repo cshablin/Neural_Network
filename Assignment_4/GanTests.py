@@ -1,5 +1,8 @@
 import unittest
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 from scipy.io import arff
 from tensorflow.python.keras.utils.vis_utils import plot_model
@@ -23,6 +26,13 @@ class DiabetesTestCase(unittest.TestCase):
             df[column] = col
         return df
 
+    def show_plot(self, arr: np.ndarray, title):
+        x = range(arr.shape[0])
+        plt.title(title)
+        plt.xlabel("Epochs")
+        plt.plot(x, arr)
+        plt.show()
+
     def test_load_lyrics(self):
         # plot the model
         diab_df = self.load_data()
@@ -38,5 +48,9 @@ class DiabetesTestCase(unittest.TestCase):
         del diab_df['class']
         diab_df = self.scaler(diab_df)
         gan = GAN()
-        (d_losses, d_accuracies, g_losses) = gan.train(df=diab_df, epochs=500, batch_size=16)
+        (d_losses, d_accuracies, g_losses, g_accuracies) = gan.train(df=diab_df, epochs=500, batch_size=16)
+        self.show_plot(d_losses, 'd_losses')
+        self.show_plot(d_accuracies,'d_accuracies')
+        self.show_plot(g_losses, 'g_losses')
+        self.show_plot(g_accuracies, 'g_accuracies')
         #plot_model(model, to_file='generator_plot.png', show_shapes=True, show_layer_names=True)
