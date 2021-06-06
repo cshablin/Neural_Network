@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 
 from scipy.io import arff
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from tensorflow.python.keras.utils.vis_utils import plot_model
 
 from Assignment_4.Gan import GAN
@@ -35,7 +36,7 @@ class DiabetesTestCase(unittest.TestCase):
         plt.plot(x, arr)
         plt.show()
 
-    def test_load_lyrics(self):
+    def test_load(self):
         # plot the model
         diab_df = self.load_data()
         # class is not part of sample description
@@ -91,3 +92,30 @@ class DiabetesTestCase(unittest.TestCase):
         plt.legend(labels)
         plt.show()
 
+
+class CreditTestCase(unittest.TestCase):
+
+    def load_data(self) -> pd.DataFrame:
+        diab_arf = arff.loadarff('german_credit.arff')
+        diab_df = pd.DataFrame(diab_arf[0])
+        return diab_df
+
+    def test_load(self):
+        cred_df = self.load_data()
+        y = cred_df.pop('21')
+        print(cred_df.describe())
+        cat_labels = ['1', '3', '4', '6', '7', '9', '10', '12', '14', '15', '17', '19', '20']
+
+        # One hot encoding
+        df = pd.get_dummies(cred_df, columns=cat_labels)
+        # numeric scaling
+        scale = MinMaxScaler()
+        df['2'] = scale.fit_transform(df['2'].values.reshape(-1, 1))
+        df['5'] = scale.fit_transform(df['5'].values.reshape(-1, 1))
+        df['8'] = scale.fit_transform(df['8'].values.reshape(-1, 1))
+        df['11'] = scale.fit_transform(df['11'].values.reshape(-1, 1))
+        df['13'] = scale.fit_transform(df['13'].values.reshape(-1, 1))
+        df['16'] = scale.fit_transform(df['16'].values.reshape(-1, 1))
+        df['18'] = scale.fit_transform(df['18'].values.reshape(-1, 1))
+
+        print(df.head())
