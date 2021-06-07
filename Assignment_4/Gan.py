@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -67,6 +69,18 @@ class GAN:
         # validity = model(g_rows)
         # return tf.keras.Model(g_rows, validity)
 
+    def generate_real_x_y(self, data: np.ndarray, n_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+        y_real = np.ones((n_samples, 1))
+        idx = np.random.randint(0, data.shape[0], n_samples)
+        x_real = data[idx]
+        return x_real, y_real
+
+    def generate_fake_x_y(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray]:
+        y_fake = np.zeros((n_samples, 1))
+        noise = np.random.normal(0, 1, (n_samples, self.latent_dim))
+        x_fake = self.generator.predict(noise)
+        return x_fake, y_fake
+
 
     def train(self, df, epochs, batch_size=8):
         # (X_train, _), (_, _) = mnist.load_data()
@@ -86,14 +100,20 @@ class GAN:
         g_accuracies = np.zeros((epochs, 1))
 
         for i, epoch in enumerate(range(epochs)):
-            idx = np.random.randint(0, X_train.shape[0], batch_size)
-            rows = X_train[idx]
-            noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-            gen_rows = self.generator.predict(noise)
-            d_loss_real, d_acc_real = self.discriminator.train_on_batch(rows, valid)
-            d_loss_fake, d_acc_fake = self.discriminator.train_on_batch(gen_rows, fake)
-            d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
-            d_acc = 0.5 * np.add(d_acc_real, d_acc_fake)
+            # prepare real fake examples
+            x_fake, y_fake = self.generate_fake_x_y(batch_size)
+            x_real, y_real = self.generate_real_x_y(X_train, batch_size)
+            # create training set for the discriminator
+            x, y = np.vstack((x_real, x_fake)), np.vstack((y_real, y_fake))
+            # update discriminator model weights
+            d_loss, d_acc = self.discriminator.train_on_batch(x, y)
+
+            # evaluate discriminator on real examples
+            x_real, y_real = self.generate_real_x_y(X_train, batch_size)
+            d_loss_real, d_acc_real = self.discriminator.evaluate(x_real, y_real, verbose=0)
+            # evaluate discriminator on fake examples
+            x_fake, y_fake = self.generate_fake_x_y(batch_size)
+            d_loss_fake, d_acc_fake = self.discriminator.evaluate(x_fake, y_fake, verbose=0)
 
             d_fake_losses[i] = d_loss_fake
             d_real_losses[i] = d_loss_real
@@ -110,10 +130,7 @@ class GAN:
             g_losses[i] = g_loss
             g_accuracies[i] = g_acc
             print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f, acc.: %.2f%%]" % (epoch, d_loss, 100 * d_acc, g_loss, g_acc))
-            # if epoch % 10 == 0:
-            #   noise = np.random.normal(0, 1, (1, self.noise_dim))
-            #   gen_rows = self.generator.predict(noise)
-            #   print(gen_rows)
+
         return d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies
 
     def plot_metric(self, history: History, metric: str = 'loss') -> None:
