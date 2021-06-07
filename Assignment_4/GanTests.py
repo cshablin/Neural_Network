@@ -45,7 +45,7 @@ class DiabetesTestCase(unittest.TestCase):
         print(diab_df.describe())
 
     def test_summery_gan(self):
-        gan = GAN()
+        gan = GAN(10, 8, [30, 15], [32, 16], 'tanh')
 
     def test_train_gan(self):
         # plot the model
@@ -53,7 +53,7 @@ class DiabetesTestCase(unittest.TestCase):
         # class is not part of sample description
         del diab_df['class']
         diab_df = self.scaler(diab_df)
-        gan = GAN()
+        gan = GAN(10, 8 , [30, 15], [32, 16], 'tanh')
         d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies = gan.train(df=diab_df, epochs=500, batch_size=16)
         self.show_plot(d_losses, 'd_losses')
         self.show_plot(d_accuracies,'d_accuracies')
@@ -101,11 +101,16 @@ class CreditTestCase(unittest.TestCase):
         return diab_df
 
     def test_load(self):
+        df = self.prepare()
+        df = df.astype('float')
+
+        print(df.head())
+
+    def prepare(self):
         cred_df = self.load_data()
         y = cred_df.pop('21')
         # print(cred_df.describe())
         cat_labels = ['1', '3', '4', '6', '7', '9', '10', '12', '14', '15', '17', '19', '20']
-
         # One hot encoding
         df = pd.get_dummies(cred_df, columns=cat_labels)
         # numeric scaling
@@ -117,5 +122,46 @@ class CreditTestCase(unittest.TestCase):
         df['13'] = scale.fit_transform(df['13'].values.reshape(-1, 1))
         df['16'] = scale.fit_transform(df['16'].values.reshape(-1, 1))
         df['18'] = scale.fit_transform(df['18'].values.reshape(-1, 1))
+        return df
 
-        print(df.head())
+    def test_credit(self):
+        df_credit = self.prepare()
+        df_credit = df_credit.astype('float')
+
+        gan = GAN(20, 61, [60, 30], [64, 32], 'sigmoid')
+        d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies = gan.train(df=df_credit, epochs=500, batch_size=16)
+        self.show_plot(d_losses, 'd_losses')
+        self.show_plot(d_accuracies,'d_accuracies')
+        self.show_plot(g_losses, 'g_losses')
+        self.show_plot(g_accuracies, 'g_accuracies')
+
+        self.plot_metric(d_losses, d_fake_accuracies, d_real_accuracies)
+
+    def plot_metric(self, d_losses: np.ndarray, d_fake_accuracies: np.ndarray, d_real_accuracies: np.ndarray) -> None:
+        import matplotlib.pyplot as plt
+
+        epochs = range(1, d_losses.shape[0] + 1)
+        plt.plot(epochs, d_losses)
+        plt.plot(epochs, d_fake_accuracies)
+        plt.plot(epochs, d_real_accuracies)
+        plt.title('Gan')
+        plt.xlabel("Epochs")
+        plt.legend(['d_loss', 'd_fake_accuracies', 'd_real_accuracies'])
+        plt.show()
+
+    def plot_metric_general(self, graphs: List[np.ndarray], labels: List[str]) -> None:
+        import matplotlib.pyplot as plt
+        epochs = range(1, graphs[0].shape[0] + 1)
+        plt.xlabel("Epochs")
+        plt.title('Gan')
+        for i in range(len(labels)):
+            plt.plot(epochs, graphs[i])
+        plt.legend(labels)
+        plt.show()
+
+    def show_plot(self, arr: np.ndarray, title):
+        x = range(arr.shape[0])
+        plt.title(title)
+        plt.xlabel("Epochs")
+        plt.plot(x, arr)
+        plt.show()

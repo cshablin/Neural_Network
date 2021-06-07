@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 import tensorflow as tf
@@ -7,14 +7,13 @@ from keras.callbacks import History
 
 
 class GAN:
-    def __init__(self):
-        self.latent_dim = 10
-        self.generator_vector_size = 8
+    def __init__(self, latent_dim, gen_out_size, gen_dense_sizes: List[int], dis_dense_sizes: List[int], gen_final_activation='tanh' ):
+        self.latent_dim = latent_dim
+        self.generator_vector_size = gen_out_size
         self.discriminator_input_shape = (self.generator_vector_size,)
-        self.num_examples_to_generate = 16
 
-        self.generator = self.make_generator_model()
-        self.discriminator = self.make_discriminator_model()
+        self.generator = self.make_generator_model(gen_dense_sizes, gen_final_activation)
+        self.discriminator = self.make_discriminator_model(dis_dense_sizes)
         self.gan = self.combime_gan(self.generator, self.discriminator)
 
     def combime_gan(self, g_model, d_model):
@@ -28,16 +27,16 @@ class GAN:
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
         return model
 
-    def make_generator_model(self):
+    def make_generator_model(self, dis_dense_sizes: List[int], gen_final_activation):
         model = tf.keras.Sequential()
-        model.add(layers.Dense(30, use_bias=True, input_dim=self.latent_dim))
+        model.add(layers.Dense(dis_dense_sizes[0], use_bias=True, input_dim=self.latent_dim))
         model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
 
-        model.add(layers.Dense(15))
+        model.add(layers.Dense(dis_dense_sizes[1]))
         model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
-        model.add(layers.Dense(self.generator_vector_size, activation='tanh'))
+        model.add(layers.Dense(self.generator_vector_size, activation=gen_final_activation))
 
         model.summary()
         return model
@@ -47,14 +46,14 @@ class GAN:
         # return tf.keras.Model(noise, g_rows)
         # return model
 
-    def make_discriminator_model(self):
+    def make_discriminator_model(self, dis_dense_sizes: List[int]):
         model = tf.keras.Sequential()
-        model.add(layers.Dense(32, use_bias=True, input_shape=self.discriminator_input_shape))
+        model.add(layers.Dense(dis_dense_sizes[0], use_bias=True, input_shape=self.discriminator_input_shape))
         # model.add(layers.Dense(32, use_bias=False, input_shape=(8,)))
         model.add(layers.LeakyReLU())
         model.add(layers.Dropout(0.2))
 
-        model.add(layers.Dense(16))
+        model.add(layers.Dense(dis_dense_sizes[1]))
         model.add(layers.LeakyReLU())
         model.add(layers.Dropout(0.2))
 
