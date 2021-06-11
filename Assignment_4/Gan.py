@@ -23,50 +23,56 @@ class GAN:
         model = tf.keras.Sequential()
         model.add(g_model)
         model.add(d_model)
-        opt = tf.keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+        opt = tf.keras.optimizers.Adam(lr=0.0002, beta_1=0.5) # lr=0.0002, beta_1=0.5, beta_2=0.999
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
         return model
 
     def make_generator_model(self, dis_dense_sizes: List[int], gen_final_activation):
         model = tf.keras.Sequential()
-        model.add(layers.Dense(dis_dense_sizes[0], use_bias=True, input_dim=self.latent_dim))
-        model.add(layers.BatchNormalization())
-        model.add(layers.LeakyReLU())
 
-        model.add(layers.Dense(dis_dense_sizes[1]))
-        model.add(layers.BatchNormalization())
-        model.add(layers.LeakyReLU())
+        first_layer = True
+        for layer_size in dis_dense_sizes:
+            if first_layer:
+                model.add(layers.Dense(layer_size, input_dim=self.latent_dim))
+                first_layer = False
+            else:
+                model.add(layers.Dense(layer_size))
+            model.add(layers.BatchNormalization())
+            model.add(layers.LeakyReLU())
+            model.add(layers.Dropout(0.25))
+
         model.add(layers.Dense(self.generator_vector_size, activation=gen_final_activation))
 
         model.summary()
         return model
 
-        # noise = tf.keras.layers.Input(shape=(self.latent_dim,))
-        # g_rows = model(noise)
-        # return tf.keras.Model(noise, g_rows)
-        # return model
-
     def make_discriminator_model(self, dis_dense_sizes: List[int]):
         model = tf.keras.Sequential()
-        model.add(layers.Dense(dis_dense_sizes[0], use_bias=True, input_shape=self.discriminator_input_shape))
-        # model.add(layers.Dense(32, use_bias=False, input_shape=(8,)))
-        model.add(layers.LeakyReLU())
-        model.add(layers.Dropout(0.2))
-
-        model.add(layers.Dense(dis_dense_sizes[1]))
-        model.add(layers.LeakyReLU())
-        model.add(layers.Dropout(0.2))
+        first_layer = True
+        for layer_size in dis_dense_sizes:
+            if first_layer:
+                model.add(layers.Dense(layer_size, input_dim=self.generator_vector_size))
+                first_layer = False
+            else:
+                model.add(layers.Dense(layer_size))
+            # model.add(layers.BatchNormalization())
+            model.add(layers.LeakyReLU())
+            model.add(layers.Dropout(0.2))
 
         model.add(layers.Flatten())
         model.add(layers.Dense(1, activation='sigmoid'))
-        opt = tf.keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+        # Carmel - note for report, lr made lower here x10 than Generator because
+        # when equel the D outpreformed G and loss could not converge so idea is to make D learn slower so that G could be an adversary
+
+        # opt = tf.keras.optimizers.Adam(lr=0.00002, beta_1=0.5)  # lr=0.0002, beta_1=0.5, beta_2=0.999
+        # opt = tf.keras.optimizers.Adam(lr=0.00002, beta_1=0.8)  # lr=0.0002, beta_1=0.5, beta_2=0.999
+        # opt = tf.keras.optimizers.Adam(lr=0.000015, beta_1=0.95)  # lr=0.0002, beta_1=0.5, beta_2=0.999
+        opt = tf.keras.optimizers.Adam(lr=0.000015, beta_1=0.90,beta_2=0.99 )  # lr=0.0002, beta_1=0.5, beta_2=0.999
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
         model.summary()
         return model
 
-        # g_rows = tf.keras.layers.Input(shape=self.discriminator_input_shape)
-        # validity = model(g_rows)
-        # return tf.keras.Model(g_rows, validity)
+
 
     def generate_real_x_y(self, data: np.ndarray, n_samples: int) -> Tuple[np.ndarray, np.ndarray]:
         y_real = np.ones((n_samples, 1))
@@ -102,6 +108,13 @@ class GAN:
             # prepare real fake examples
             x_fake, y_fake = self.generate_fake_x_y(batch_size)
             x_real, y_real = self.generate_real_x_y(X_train, batch_size)
+
+            # Carmel - try this
+            # set discriminator learning rate:
+            # current_learning_rate = self.discriminator.optimizer.learning_rate * 0.999
+            # backend.set_value(self.discriminator.optimizer.learning_rate, current_learning_rate)  # set new learning_rate
+
+
             # create training set for the discriminator
             x, y = np.vstack((x_real, x_fake)), np.vstack((y_real, y_fake))
             # update discriminator model weights
@@ -128,19 +141,12 @@ class GAN:
             d_accuracies[i] = d_acc
             g_losses[i] = g_loss
             g_accuracies[i] = g_acc
-            print("%d [D loss: %f, acc.: %.2f%%] [G loss: %f, acc.: %.2f%%]" % (epoch, d_loss, 100 * d_acc, g_loss, g_acc))
+
+            if i % 50 == 0:
+                print("epoch %d [D loss: %f, acc.: %.2f%%] [G loss: %f, acc.: %.2f%%]" % (epoch, d_loss, 100 * d_acc, g_loss, g_acc))
+                # if 800<=i and i<= 1200:
+                #   filename = 'generator_model_%03d.h5' % (epoch + 1)
+                #   self.generator.save(filename)
 
         return d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies
 
-    def plot_metric(self, history: History, metric: str = 'loss') -> None:
-        import matplotlib.pyplot as plt
-        train_metrics = history.history[metric]
-        val_metrics = history.history['val_'+metric]
-        epochs = range(1, len(train_metrics) + 1)
-        plt.plot(epochs, train_metrics)
-        plt.plot(epochs, val_metrics)
-        plt.title('Training and validation '+ metric)
-        plt.xlabel("Epochs")
-        plt.ylabel(metric)
-        plt.legend(["train_"+metric, 'val_'+metric])
-        plt.show()

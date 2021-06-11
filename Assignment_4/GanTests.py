@@ -113,22 +113,29 @@ class CreditTestCase(unittest.TestCase):
         cat_labels = ['1', '3', '4', '6', '7', '9', '10', '12', '14', '15', '17', '19', '20']
         # One hot encoding
         df = pd.get_dummies(cred_df, columns=cat_labels)
+        df = df.astype('float')
+
         # numeric scaling
-        scale = MinMaxScaler()
-        df['2'] = scale.fit_transform(df['2'].values.reshape(-1, 1))
-        df['5'] = scale.fit_transform(df['5'].values.reshape(-1, 1))
-        df['8'] = scale.fit_transform(df['8'].values.reshape(-1, 1))
-        df['11'] = scale.fit_transform(df['11'].values.reshape(-1, 1))
-        df['13'] = scale.fit_transform(df['13'].values.reshape(-1, 1))
-        df['16'] = scale.fit_transform(df['16'].values.reshape(-1, 1))
-        df['18'] = scale.fit_transform(df['18'].values.reshape(-1, 1))
+        scale = MinMaxScaler(feature_range=(-1, 1))
+        scaled_values = scale.fit_transform(df)
+        df.loc[:, :] = scaled_values
+
+        # scale = MinMaxScaler(feature_range=(-1, 1))
+        # df['2'] = scale.fit_transform(df['2'].values.reshape(-1, 1))
+        # df['5'] = scale.fit_transform(df['5'].values.reshape(-1, 1))
+        # df['8'] = scale.fit_transform(df['8'].values.reshape(-1, 1))
+        # df['11'] = scale.fit_transform(df['11'].values.reshape(-1, 1))
+        # df['13'] = scale.fit_transform(df['13'].values.reshape(-1, 1))
+        # df['16'] = scale.fit_transform(df['16'].values.reshape(-1, 1))
+        # df['18'] = scale.fit_transform(df['18'].values.reshape(-1, 1))
         return df
 
     def test_credit(self):
         df_credit = self.prepare()
-        df_credit = df_credit.astype('float')
+        # df_credit = df_credit.astype('float')
 
-        gan = GAN(20, 61, [60, 30], [64, 32], 'sigmoid')
+        # gan = GAN(20, 61, [60, 30], [64, 32], 'sigmoid')
+        gan = GAN(30, 61, [128, 256, 512], [512, 256, 128], 'tanh')
         d_losses, d_accuracies, g_losses, g_accuracies, d_fake_losses, d_real_losses, d_fake_accuracies, d_real_accuracies = gan.train(df=df_credit, epochs=500, batch_size=16)
         self.show_plot(d_losses, 'd_losses')
         self.show_plot(d_accuracies,'d_accuracies')
