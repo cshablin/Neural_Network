@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import joblib
 
 
 from scipy.io import arff
@@ -172,3 +173,13 @@ class CreditTestCase(unittest.TestCase):
         plt.xlabel("Epochs")
         plt.plot(x, arr)
         plt.show()
+
+
+
+class BlackBoxGanDiabetesTestCase(unittest.TestCase):
+
+    def test_random_forest_gan(self):
+        gs_rf = joblib.load("random_forest_diab.joblib")
+        from Assignment_4.TwistedGan import BB_GAN
+        bb_gan = BB_GAN(gs_rf)
+        bb_gan.train(200, 16)
