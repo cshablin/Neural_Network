@@ -27,18 +27,34 @@ class BB_GAN:
         d_model.trainable = False
         g_input = Input(shape=(self.latent_dim,))
         c_input = Input(shape=(1,))
-        g_sample = g_model([g_input, c_input])
-        d_desision = d_model([g_sample, c_input, c_input])
+        batch_mean = Input(shape=(1,))
+        batch_std = Input(shape=(1,))
+        g_sample = g_model([g_input, c_input, batch_mean, batch_std])
+        d_decision = d_model([g_sample, c_input, c_input, batch_mean, batch_std])
 
-        gan_model = Model([g_input, c_input], d_desision)
+        gan_model = Model([g_input, c_input, batch_mean, batch_std], d_decision)
         opt = tf.keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
         gan_model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
         return gan_model
 
     def make_generator_model(self):
-        input_noise = Input(shape=(self.latent_dim,))
         c_input = Input(shape=(1,))
-        concat_layer_c = concatenate([input_noise, c_input])
+        batch_mean = Input(shape=(1,))
+        batch_std = Input(shape=(1,))
+        concat_layer_batch = concatenate([c_input, batch_mean, batch_std])
+        dense_batch = Dense(30, use_bias=True)(concat_layer_batch)
+        dense_batch_bn = BatchNormalization()(dense_batch)
+        dense_batch_lr = LeakyReLU()(dense_batch_bn)
+        dense_batch_do = Dropout(0.3)(dense_batch_lr)
+        dense_batch_2 = Dense(15)(dense_batch_do)
+        dense_batch_2_bn = BatchNormalization()(dense_batch_2)
+        dense_batch_2_lr = LeakyReLU()(dense_batch_2_bn)
+        dense_batch_2_do = Dropout(0.2)(dense_batch_2_lr)
+
+        input_noise = Input(shape=(self.latent_dim,))
+
+
+        concat_layer_c = concatenate([input_noise])
         dense_1 = Dense(30, use_bias=True)(concat_layer_c)
         dense_1_bn = BatchNormalization()(dense_1)
         dense_1_lr = LeakyReLU()(dense_1_bn)
@@ -47,9 +63,12 @@ class BB_GAN:
         dense_2_bn = BatchNormalization()(dense_2)
         dense_2_lr = LeakyReLU()(dense_2_bn)
         dense_2_do = Dropout(0.2)(dense_2_lr)
-        final_layer = Dense(self.generator_vector_size, activation='tanh')(dense_2_do)
+
+        merge_noise_meta = concatenate([dense_2_do, dense_batch_2_do])
+
+        final_layer = Dense(self.generator_vector_size, activation='tanh')(merge_noise_meta)
         # concat_layer = concatenate([final_layer, c_input])
-        model = Model(inputs=[input_noise, c_input], outputs=final_layer)
+        model = Model(inputs=[input_noise, c_input, batch_mean, batch_std], outputs=final_layer)
 
         model.summary()
         return model
@@ -60,8 +79,10 @@ class BB_GAN:
         input_sample = Input(shape=self.discriminator_input_shape)
         cy1_input = Input(shape=(1,))
         cy2_input = Input(shape=(1,))
+        batch_mean = Input(shape=(1,))
+        batch_std = Input(shape=(1,))
 
-        concat_layer_c = concatenate([input_sample, cy1_input, cy2_input])
+        concat_layer_c = concatenate([input_sample, cy1_input, cy2_input, batch_mean, batch_std])
         dense_1 = Dense(32, use_bias=True)(concat_layer_c)
         dense_1_lr = LeakyReLU()(dense_1)
         dense_1_do = Dropout(0.2)(dense_1_lr)
@@ -70,7 +91,7 @@ class BB_GAN:
         dense_2_do = Dropout(0.2)(dense_2_lr)
         flatten = Flatten()(dense_2_do)
         final_layer = Dense(1, activation='sigmoid')(flatten)
-        model = Model(inputs=[input_sample, cy1_input, cy2_input], outputs=final_layer)
+        model = Model(inputs=[input_sample, cy1_input, cy2_input, batch_mean, batch_std], outputs=final_layer)
         opt = tf.keras.optimizers.Adam(lr=0.00015, beta_1=0.5)
         model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
         model.summary()
@@ -80,7 +101,9 @@ class BB_GAN:
         # prepare samples
         noise = np.random.normal(0, 1, (n_samples, self.latent_dim))
         c_1 = np.random.random((n_samples, ))
-        samples_1 = self.generator.predict([noise, c_1])
+        c_1_mean = np.ones((n_samples,)) * np.mean(c_1)
+        c_1_std = np.ones((n_samples, )) * np.std(c_1)
+        samples_1 = self.generator.predict([noise, c_1, c_1_mean, c_1_std])
         y_1 = self.gs_rf.predict_proba(samples_1)[:, 0]
         valid = np.ones((n_samples, 1))
         return samples_1, c_1, y_1, valid
@@ -88,7 +111,9 @@ class BB_GAN:
     def generate_fake_x_y(self, n_samples: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         noise = np.random.normal(0, 1, (n_samples, self.latent_dim))
         c_2 = np.random.random((n_samples, ))
-        samples_2 = self.generator.predict([noise, c_2])
+        c_2_mean = np.ones((n_samples,)) * np.mean(c_2)
+        c_2_std = np.ones((n_samples, )) * np.std(c_2)
+        samples_2 = self.generator.predict([noise, c_2, c_2_mean, c_2_std])
         y_2 = self.gs_rf.predict_proba(samples_2)[:, 0]
         invalid = np.zeros((n_samples, 1))
         return samples_2, y_2, c_2, invalid
@@ -120,10 +145,14 @@ class BB_GAN:
             noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
             noise_ = np.random.uniform(-1, 1, size=(batch_size, self.latent_dim))
             c_1 = np.random.random((batch_size, ))
-            samples_1 = self.generator.predict([noise, c_1])
+            c_1_mean = np.ones((batch_size,)) * np.mean(c_1)
+            c_1_std = np.ones((batch_size, )) * np.std(c_1)
+            samples_1 = self.generator.predict([noise, c_1, c_1_mean, c_1_std])
             y_1 = self.gs_rf.predict_proba(samples_1)[:, 0]  # evaluate Y by running RF classifier
             c_2 = np.random.random((batch_size, ))
-            samples_2 = self.generator.predict([noise, c_2])
+            c_2_mean = np.ones((batch_size,)) * np.mean(c_2)
+            c_2_std = np.ones((batch_size, )) * np.std(c_2)
+            samples_2 = self.generator.predict([noise, c_2, c_2_mean, c_2_std])
             y_2 = self.gs_rf.predict_proba(samples_2)[:, 0]  # evaluate Y by running RF classifier
 
             # create training set for the discriminator
@@ -132,15 +161,26 @@ class BB_GAN:
             samples, c, y_bb = np.vstack((samples_1, samples_2)), np.concatenate((c_1, y_2), axis=None), np.concatenate((y_1, c_2), axis=None)
             # samples, c, y_bb = np.vstack((samples_1, samples_2)), np.vstack((c_1, y_2)), np.vstack((y_1, c_2))
 
+            y_1_mean = np.ones((batch_size,)) * np.mean(y_1)
+            y_1_std = np.ones((batch_size, )) * np.std(y_1)
+            c_2_mean = np.ones((batch_size, )) * np.mean(c_2)
+            c_2_std = np.ones((batch_size, )) * np.std(c_2)
+            d_loss_half_real, d_acc_half_real = self.discriminator.train_on_batch([samples_1, c_1, y_1,  y_1_mean, y_1_std], valid)
+            d_loss_half_fake, d_acc_half_fake = self.discriminator.train_on_batch([samples_2, y_2, c_2, c_2_mean, c_2_std], invalid)
+            d_loss = 0.5 * (d_loss_half_real + d_loss_half_fake)
+            d_acc = 0.5 * (d_acc_half_real + d_acc_half_fake)
             # update discriminator model weights
-            d_loss, d_acc = self.discriminator.train_on_batch([samples, c, y_bb], np.vstack((valid, invalid)))
-
+            # d_loss, d_acc = self.discriminator.train_on_batch([samples, c, y_bb], np.vstack((valid, invalid)))
             # evaluate discriminator on real examples
             samples_real, c_real, y_bb_real, y_real = self.generate_real_x_y(batch_size)
-            d_loss_real, d_acc_real = self.discriminator.evaluate([samples_real, c_real, y_bb_real], y_real, verbose=0)
+            y_bb_mean_real = np.ones((batch_size, )) * np.mean(y_bb_real)
+            y_bb_std_real = np.ones((batch_size, )) * np.std(y_bb_real)
+            d_loss_real, d_acc_real = self.discriminator.evaluate([samples_real, c_real, y_bb_real, y_bb_mean_real, y_bb_std_real], y_real, verbose=0)
             # evaluate discriminator on fake examples
             samples_fake, c_fake, y_bb_fake, y_fake = self.generate_fake_x_y(batch_size)
-            d_loss_fake, d_acc_fake = self.discriminator.evaluate([samples_fake, c_fake, y_bb_fake], y_fake, verbose=0)
+            y_bb_mean_fake = np.ones((batch_size, )) * np.mean(y_bb_fake)
+            y_bb_std_fake = np.ones((batch_size, )) * np.std(y_bb_fake)
+            d_loss_fake, d_acc_fake = self.discriminator.evaluate([samples_fake, c_fake, y_bb_fake, y_bb_mean_fake, y_bb_std_fake], y_fake, verbose=0)
 
             d_fake_losses[i] = d_loss_fake
             d_real_losses[i] = d_loss_real
@@ -150,8 +190,10 @@ class BB_GAN:
             # create inverted labels for the fake samples so generator can improve to be 'real'
             # update the generator via the discriminator's error
             noise = np.random.normal(0, 1, (batch_size * 2, self.latent_dim))
-            c = np.random.normal(0, 1, (batch_size * 2, ))
-            g_loss, g_acc = self.gan.train_on_batch([noise, c], valid_twice)
+            c = np.random.random((batch_size * 2, ))
+            c_mean = np.ones((batch_size * 2,)) * np.mean(c)
+            c_std = np.ones((batch_size * 2, )) * np.std(c)
+            g_loss, g_acc = self.gan.train_on_batch([noise, c, c_mean, c_std], valid_twice)
 
             d_losses[i] = d_loss
             d_accuracies[i] = d_acc
