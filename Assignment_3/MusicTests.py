@@ -17,7 +17,7 @@ from keras import utils
 
 from Assignment_3.DataLoad import *
 from Assignment_3.Midi import load_midi
-from Assignment_3.MusicalRNN import LyricsGenerator, LyricsGeneratorLateFusion
+from Assignment_3.MusicalRNN import LyricsGenerator# , LyricsGeneratorLateFusion
 
 
 class MusicModelOneTestCase(unittest.TestCase):
